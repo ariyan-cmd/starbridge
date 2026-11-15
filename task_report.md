@@ -37,6 +37,7 @@ Entry rules:
 
 | Date | What | Setup | Value |
 |------|------|-------|-------|
+| 2026-11-15 | Build size of the sketch with config, hal/display and face preview | `arduino-cli compile`, board `esp8266:esp8266:nodemcuv2`, core 3.1.2, Adafruit SSD1306 2.5.17, GFX 1.13.0, arduino-cli 1.6.0 | RAM 30316 / 80192 bytes (37%) static, flash 259732 / 1048576 bytes (24%), IRAM 60943 / 65536 bytes (92%, includes the 32768 B reserved cache). Compiles with no errors. Runtime fps and heap: pending |
 | 2026-11-15 | Display bring-up result | `firmware/bringup/oled_test`, 128x64, 400 kHz, SSD1306 at 0x3C | Visual pass, reported clearer than 128x32 |
 | 2026-11-15 | Frames per second, full 128x64 redraw with a moving bar | Bring-up test as first written, clock labelled 400k / 800k / 1M | 38.08 fps, identical at all three labels (reported as 400k/600k/1M; the test actually used 800k) |
 | 2026-11-15 | Debug: identical fps at every clock label | Same | Cause (likely): the Adafruit SSD1306 library resets the I2C clock to its constructor value before every transfer, so `Wire.setClock()` calls in the test had no effect and all three runs were at 400 kHz. Fix: clock now passed to the display constructor via `I2C_CLOCK_HZ`, one measurement per upload. Re-measure at 800k and 1M is pending |
@@ -48,9 +49,8 @@ Entry rules:
 
 ## Open items
 
-- Face renderer (#4) not compiled or run yet. Ariyan to upload and paste Serial: per-preset fps, render us, flush us, free heap. Also note what looks wrong on screen (ring thickness, star shape, lids, bridge arch).
-- hal/display (#3) not compiled or run yet: pending Ariyan's upload. Expect the `displayFlush` us/frame and free heap lines on Serial.
-- Compile check pending: no Arduino toolchain on the dev PC, so config (#1) has not been compiled. Ariyan to verify in Arduino IDE.
+- Face renderer (#4) compiled but not run. Ariyan to upload and paste Serial: per-preset fps, render us, flush us, free heap. Also note what looks wrong on screen (ring thickness, star shape, lids, bridge arch).
+- hal/display (#3) compiled but not run: pending Ariyan's upload.
 - Gesture thresholds in `config.h` (shake 2.0 g, tap 1.8 g, freefall 0.3 g) are placeholders: pending measurement.
 - Re-run the speed test at I2C_CLOCK_HZ = 800000UL and 1000000UL (one upload each) and record fps plus whether the screen garbles.
 - Confirm the MPU6050 address by running the I2C scan with it attached.
