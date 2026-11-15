@@ -22,8 +22,10 @@
 #define I2C_CLOCK_HZ 400000UL  // I2C clock passed to the display constructor. Used by hal/display.
 #endif
 
-#ifndef NODE_NAME_DEFAULT
-#define NODE_NAME_DEFAULT "starbridge"  // Name until one is set at runtime, 1..16 chars. Used by identity.
+// Name until one is set at runtime: NODE_NAME_DEFAULT if local_config.h defines it (1..16 chars),
+// else "<NODE_NAME_PREFIX>-<chip ID hex>" so every node is distinct out of the box. Used by identity.
+#ifndef NODE_NAME_PREFIX
+#define NODE_NAME_PREFIX "starbridge"  // 1..10 chars, so at least 5 hex digits (20 bits) of chip ID fit in 16.
 #endif
 #ifndef SENSOR_CAPS
 #define SENSOR_CAPS 0  // Fitted sensors I2C cannot detect: CAP_TEMP and/or CAP_LIGHT (net/protocol.h). Used by identity.

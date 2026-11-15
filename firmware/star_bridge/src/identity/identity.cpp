@@ -6,8 +6,12 @@
 #include "../hal/board.h"
 #include "../hal/i2c_scan.h"
 
+#ifdef NODE_NAME_DEFAULT
 static_assert(sizeof(NODE_NAME_DEFAULT) - 1 >= 1 && sizeof(NODE_NAME_DEFAULT) - 1 <= NODE_NAME_LEN,
               "NODE_NAME_DEFAULT must be 1..16 chars");
+#endif
+static_assert(sizeof(NODE_NAME_PREFIX) - 1 >= 1 && sizeof(NODE_NAME_PREFIX) - 1 <= 10,
+              "NODE_NAME_PREFIX must be 1..10 chars");
 
 // Saved at hal/board NV offset 0 (identity owns 0..17).
 struct __attribute__((packed)) NameRecord {
@@ -21,6 +25,18 @@ static_assert(NV_OFF_NAME + sizeof(NameRecord) <= NV_SIZE, "name record must fit
 static uint32_t id;
 static uint16_t capMask;
 static char name[NODE_NAME_LEN + 1];
+
+// NODE_NAME_DEFAULT if set for this node, else "<prefix>-<low hex digits of chip ID>".
+static void defaultName(char *out) {
+#ifdef NODE_NAME_DEFAULT
+  strcpy(out, NODE_NAME_DEFAULT);
+#else
+  int digits = NODE_NAME_LEN - (int)(sizeof(NODE_NAME_PREFIX) - 1) - 1;  // room left after "<prefix>-"
+  if (digits > 6) digits = 6;                                           // chip ID is 24 bits
+  snprintf(out, NODE_NAME_LEN + 1, "%s-%0*lx", NODE_NAME_PREFIX, digits,
+           (unsigned long)(id & ((1UL << (4 * digits)) - 1)));         // keep the low (most varied) digits
+#endif
+}
 
 static bool validName(const char *s) {
   if (!s) return false;
@@ -36,7 +52,8 @@ void identityInit() {
   NameRecord r;
   bool ok = nvRead(NV_OFF_NAME, &r, sizeof(r)) && r.magic == NAME_MAGIC;
   r.name[NODE_NAME_LEN] = '\0';  // a corrupt record can never overrun
-  strcpy(name, ok && validName(r.name) ? r.name : NODE_NAME_DEFAULT);
+  if (ok && validName(r.name)) strcpy(name, r.name);
+  else defaultName(name);
 
   uint8_t found[0x78 - 0x08];  // room for every probed address, so 0x3C/0x68 are always checked
   uint8_t n = i2cScan(found, sizeof(found));
@@ -60,5 +77,12 @@ bool setNodeName(const char *s) {
   strcpy(r.name, s);
   if (!nvWrite(NV_OFF_NAME, &r, sizeof(r))) return false;
   strcpy(name, s);
+  return true;
+}
+
+bool resetNodeName() {
+  NameRecord r = {0, {}};  // magic 0 reads as "no saved name"
+  if (!nvWrite(NV_OFF_NAME, &r, sizeof(r))) return false;
+  defaultName(name);
   return true;
 }

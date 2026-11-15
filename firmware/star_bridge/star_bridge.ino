@@ -81,7 +81,7 @@ void loop() {
     if (line.startsWith("name ")) {
       String arg = line.substring(5);
       arg.trim();
-      bool ok = setNodeName(arg.c_str());
+      bool ok = arg == "-" ? resetNodeName() : setNodeName(arg.c_str());  // "name -" forgets the saved name
       Serial.printf("set name %s: now \"%s\"\n", ok ? "ok" : "rejected (1..16 printable chars)", nodeName());
     }
     line = "";

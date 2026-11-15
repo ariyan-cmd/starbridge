@@ -1,7 +1,7 @@
 // Copy to local_config.h (git-ignored) and edit. Any value in config.h can be overridden here.
 // Used by: config.h, identity.
 
-#define NODE_NAME_DEFAULT "destro-1"  // Default node name, max 16 chars. Used by identity.
+// #define NODE_NAME_DEFAULT "destro-1"  // Fixed name for this node, 1..16 chars. Unset: "starbridge-<chip ID>". Used by identity.
 // #define SENSOR_CAPS (CAP_TEMP | CAP_LIGHT)  // DHT / LDR fitted
 // #define OLED_I2C_ADDR 0x3D
 // #define MPU_I2C_ADDR 0x69
