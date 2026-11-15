@@ -1,5 +1,5 @@
 // Host-side test for events. Lives outside the sketch so Arduino does not compile it.
-// Run: g++ -std=c++11 -Wall -Wextra -I firmware/star_bridge/src/events test/events_test.cpp firmware/star_bridge/src/events/events.cpp firmware/star_bridge/src/net/codec.cpp -o /tmp/events_test && /tmp/events_test
+// Run: g++ -std=c++11 -Wall -Wextra -I firmware/star_bridge/src/events test/events_test.cpp firmware/star_bridge/src/events/events.cpp firmware/star_bridge/src/peers/peers.cpp firmware/star_bridge/src/net/codec.cpp -o /tmp/events_test && /tmp/events_test
 #include <stdio.h>
 #include <string.h>
 
@@ -28,15 +28,37 @@ static bool fakeSend(uint8_t type, const void *payload, uint8_t len) {
 static Event got[EVENT_QUEUE_LEN + 4];
 static int nGot;
 static void handler(const Event &e) { got[nGot++] = e; }
+static void echo(const Event &e) { handler(e); eventsLocal(e.code, e.arg); }
 
 static int16_t temp = 2150;
 static bool readTemp(int16_t &v) { v = temp; return true; }
 
 static bool air(Packet &p) { return codecParse(frame, frameLen, p) == PARSE_OK; }
 
+static bool peerSend(uint8_t, const void *, uint8_t) { return true; }  // peers' HELLO/BEAT, not under test
+static void addPeer(uint32_t id) {
+  Packet h = {};
+  h.hdr.type = MSG_HELLO;
+  h.hdr.src_id = id;
+  peersOnPacket(h, 0);
+}
+
+static Packet telemetry(uint32_t src, uint8_t sensor, int16_t v) {
+  Packet q = {};
+  q.hdr.type = MSG_TELEMETRY;
+  q.hdr.src_id = src;
+  TelemetryPayload tp = {sensor, v};
+  memcpy(q.payload, &tp, sizeof(tp));
+  return q;
+}
+
 int main() {
   codecInit(100);
   Packet p;
+  HelloPayload me = {};
+  peersBegin(me, peerSend, nullptr, 0);  // one peer table plays both nodes' view: A and B know each other
+  addPeer(A);
+  addPeer(B);
 
   // Node A: a local gesture is broadcast at once and reaches A's handler on the next update.
   sender = A;
@@ -55,6 +77,14 @@ int main() {
   eventsOnPacket(p, 20);
   eventsUpdate(20);
   CHECK(nGot == 1 && got[0].kind == EV_REMOTE && got[0].src == A && got[0].code == 1 && got[0].arg == 0);
+
+  // EVENT from a node that is not a peer is ignored.
+  Packet stranger = p;
+  stranger.hdr.src_id = 0xC3;
+  nGot = 0;
+  eventsOnPacket(stranger, 25);
+  eventsUpdate(25);
+  CHECK(nGot == 0);
 
   // B's own broadcast heard back is ignored.
   nGot = 0;
@@ -118,17 +148,20 @@ int main() {
   eventsPeerChange(peer, false);
   CHECK(!peerReading(A, t, at));
 
-  // Reading table full: a new peer is ignored until one leaves.
-  for (uint32_t id = 1; id <= PEER_TABLE_LEN + 1; id++) {
-    TelemetryPayload tp = {SENSOR_TEMP, (int16_t)id};
-    Packet q = {};
-    q.hdr.type = MSG_TELEMETRY;
-    q.hdr.src_id = 0x1000 + id;
-    memcpy(q.payload, &tp, sizeof(tp));
-    eventsOnPacket(q, id);
-  }
-  CHECK(peerReading(0x1000 + PEER_TABLE_LEN, t, at));
-  CHECK(!peerReading(0x1000 + PEER_TABLE_LEN + 1, t, at));
+  // Only peers and only SENSOR_TEMP are stored: a non-peer would never get a LEAVE to free its slot.
+  eventsOnPacket(telemetry(0xC3, SENSOR_TEMP, 1), 800);
+  CHECK(!peerReading(0xC3, t, at));
+  eventsOnPacket(telemetry(A, 9, 5), 801);
+  CHECK(!peerReading(A, t, at));
+
+  // A handler that raises an event per event does not spin: the new one waits for the next update.
+  nGot = 0;
+  eventsBegin(B, fakeSend, echo, nullptr, 0);
+  eventsLocal(1, 0);
+  eventsUpdate(900);
+  CHECK(nGot == 1);
+  eventsUpdate(901);
+  CHECK(nGot == 2);
 
   printf("%s\n", fails ? "FAILED" : "all events checks pass");
   return fails != 0;

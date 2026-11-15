@@ -28,9 +28,11 @@ void eventsBegin(uint32_t selfId, PeerSend send, EventHandler handler, TempRead 
 
 void eventsLocal(uint8_t code, int16_t arg);           // From the gesture callback: broadcasts EVENT, queues EV_LOCAL.
 void eventsPeerChange(const Peer &p, bool joined);     // From the peers change callback.
-void eventsOnPacket(const Packet &p, uint32_t now);    // Every accepted packet. EVENT and TELEMETRY from self are ignored.
+// Every accepted packet, after peersOnPacket. Only EVENT and TELEMETRY (SENSOR_TEMP) from known peers are used.
+void eventsOnPacket(const Packet &p, uint32_t now);
 
-// Hands queued events to the handler (oldest first) and sends TELEMETRY every TELEMETRY_INTERVAL_MS. Call every loop().
+// Hands the events queued so far to the handler (oldest first; ones it raises wait for the next call)
+// and sends TELEMETRY every TELEMETRY_INTERVAL_MS. Call every loop().
 void eventsUpdate(uint32_t now);
 
 uint32_t eventsDropped();  // events lost because the queue was full
