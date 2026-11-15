@@ -18,15 +18,33 @@ Header is 10 bytes, so payload is at most 240 bytes. Multi-byte fields are littl
 
 ## Message types
 
-| Type | Value | Sent | Payload (proposed) |
-|------|-------|------|--------------------|
-| HELLO | 1 | once on boot, again on request | name (up to 16 chars), capability bitmask u16, firmware version u8 |
-| BEAT | 2 | every few seconds | uptime s u32, battery or status byte |
-| EVENT | 3 | on a gesture | event code u8, argument i16 |
-| TELEMETRY | 4 | periodic | sensor id u8, value i16 (scaled x100) |
-| CMD | 5 | on demand | command code u8, argument bytes |
+| Type | Value | Sent | Payload |
+|------|-------|------|---------|
+| HELLO | 1 | once on boot, again on request | 19 bytes, see below |
+| BEAT | 2 | every few seconds | 5 bytes |
+| EVENT | 3 | on a gesture | 3 bytes |
+| TELEMETRY | 4 | periodic | 3 bytes |
+| CMD | 5 | on demand | 1 + n bytes, n = 0..239 |
 
-## Capability bits (proposed)
+## Payloads
+
+C structs in `firmware/star_bridge/src/net/protocol.h`, packed, with `static_assert` on every size.
+
+| Type | Field | Size | Notes |
+|------|-------|------|-------|
+| HELLO | name | 16 x char | zero-padded; not NUL-terminated when all 16 chars are used |
+| HELLO | caps | u16 | capability bitmask |
+| HELLO | fw_version | u8 | |
+| BEAT | uptime_s | u32 | seconds since boot |
+| BEAT | status | u8 | battery or status byte |
+| EVENT | code | u8 | event code |
+| EVENT | arg | i16 | |
+| TELEMETRY | sensor_id | u8 | |
+| TELEMETRY | value_x100 | i16 | value scaled x100 |
+| CMD | code | u8 | command code |
+| CMD | args | n x u8 | n = payload_len - 1 |
+
+## Capability bits
 
 `DISPLAY=1<<0, IMU=1<<1, TEMP=1<<2, LIGHT=1<<3`
 
