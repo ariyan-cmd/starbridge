@@ -31,6 +31,11 @@ void peersBegin(const HelloPayload &s, PeerSend sendFn, PeerChange changeFn, uin
   sendHello(now);
 }
 
+void peersSetSelf(const HelloPayload &s, uint32_t now) {
+  self = s;
+  sendHello(now);
+}
+
 static Peer *find(uint32_t id) {
   for (uint8_t i = 0; i < count; i++)
     if (table[i].id == id) return &table[i];
@@ -58,7 +63,8 @@ void peersOnPacket(const Packet &p, uint32_t now) {
     return;
   }
   if (peer) peer->lastSeen = now;
-  else if (p.hdr.type == MSG_BEAT && now - lastHello >= HELLO_MIN_GAP_MS) sendHello(now);  // we missed its HELLO
+  // We missed its HELLO. Not when full: we could not add it, and it would answer every beat.
+  else if (p.hdr.type == MSG_BEAT && count < PEER_TABLE_LEN && now - lastHello >= HELLO_MIN_GAP_MS) sendHello(now);
 }
 
 void peersUpdate(uint32_t now) {

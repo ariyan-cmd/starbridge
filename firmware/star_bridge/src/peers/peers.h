@@ -22,6 +22,9 @@ uint32_t peerTimeoutMs();
 // Stores self for HELLO and broadcasts it. Call once after transportInit.
 void peersBegin(const HelloPayload &self, PeerSend send, PeerChange onChange, uint32_t now);
 
+// Replaces self (after a rename) and broadcasts the new HELLO at once.
+void peersSetSelf(const HelloPayload &self, uint32_t now);
+
 // Feed every accepted packet. HELLO adds or refreshes a peer and is answered with our HELLO;
 // a BEAT from an unknown peer gets our HELLO so it re-introduces itself. When the table is full
 // (PEER_TABLE_LEN) a new peer is ignored until a slot frees.

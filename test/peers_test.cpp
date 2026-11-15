@@ -81,6 +81,11 @@ int main() {
   int j = joins;
   peersOnPacket(hello(0xFFFF, "late"), t + 300);
   CHECK(joins == j && peerCount() == PEER_TABLE_LEN);
+  int h = hellos;
+  peersOnPacket(beat(0xFFFF), t + 2000);  // full: an unknown BEAT must not start a HELLO exchange
+  CHECK(hellos == h);
+  peersSetSelf(self, t + 2001);  // rename sends at once, even inside the 1 s gap
+  CHECK(hellos == h + 1);
 
   // millis() wrap: a peer seen just before the wrap is not dropped just after it.
   peersBegin(self, fakeSend, fakeChange, 0xFFFFFF00u);

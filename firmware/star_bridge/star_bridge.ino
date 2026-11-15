@@ -16,12 +16,21 @@
 
 static void onPacket(const Packet &p) { peersOnPacket(p, millis()); }
 
-static bool netOk;  // set in bootStep; transportSend needs ESP-NOW up
+static bool netOk;  // skip sending when ESP-NOW did not start
 
 static bool sendMsg(uint8_t type, const void *payload, uint8_t len) {
+  if (!netOk) return false;
   Packet out;
   size_t n = codecBuild(out, type, nodeId(), payload, len);
   return n && transportSend(&out, n);
+}
+
+static HelloPayload selfHello() {
+  HelloPayload h = {};
+  strncpy(h.name, nodeName(), NODE_NAME_LEN);
+  h.caps = caps();
+  h.fw_version = FW_VERSION;
+  return h;
 }
 
 // TEMPORARY until the face (#11) and console (#13): print joins and drops.
@@ -90,15 +99,10 @@ static bool bootStep(uint32_t now) {
                     (unsigned long)(millis() - netStart));
       break;
     }
-    case 3: {
-      HelloPayload self = {};
-      strncpy(self.name, nodeName(), NODE_NAME_LEN);
-      self.caps = caps();
-      self.fw_version = FW_VERSION;
-      peersBegin(self, sendMsg, onPeerChange, now);
+    case 3:
+      peersBegin(selfHello(), sendMsg, onPeerChange, now);
       Serial.printf("peers: beat %u ms, timeout %lu ms\n", BEAT_INTERVAL_MS, (unsigned long)peerTimeoutMs());
       break;
-    }
     default:  // all ready: keep gestures fed, answer HELLOs and keep the beat going while the splash finishes
       gesturesUpdate(now);
       transportPoll();
@@ -163,6 +167,7 @@ void loop() {
       String arg = line.substring(5);
       arg.trim();
       bool ok = arg == "-" ? resetNodeName() : setNodeName(arg.c_str());  // "name -" forgets the saved name
+      if (ok) peersSetSelf(selfHello(), millis());  // tell peers now, not at next boot
       Serial.printf("set name %s: now \"%s\"\n", ok ? "ok" : "rejected (1..16 printable chars)", nodeName());
     }
     line = "";
