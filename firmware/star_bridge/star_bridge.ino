@@ -11,12 +11,23 @@
 #include "src/identity/identity.h"
 #include "src/net/codec.h"
 #include "src/net/transport.h"
+#include "src/peers/peers.h"
 #include "src/splash/splash.h"
 
-// TEMPORARY two-board link check (#6): print each accepted packet. Replaced by peers (#10) and events (#12).
-static void onPacket(const Packet &p) {
-  Serial.printf("RX type %u from %08X seq %u len %u t=%lu\n", p.hdr.type, p.hdr.src_id, p.hdr.seq,
-                p.hdr.payload_len, (unsigned long)millis());
+static void onPacket(const Packet &p) { peersOnPacket(p, millis()); }
+
+static bool netOk;  // set in bootStep; transportSend needs ESP-NOW up
+
+static bool sendMsg(uint8_t type, const void *payload, uint8_t len) {
+  Packet out;
+  size_t n = codecBuild(out, type, nodeId(), payload, len);
+  return n && transportSend(&out, n);
+}
+
+// TEMPORARY until the face (#11) and console (#13): print joins and drops.
+static void onPeerChange(const Peer &p, bool joined) {
+  Serial.printf("PEER %s %08X \"%s\" caps 0x%04X fw %u t=%lu (%u peers)\n", joined ? "JOIN" : "LOST", p.id, p.name,
+                p.caps, p.fw_version, (unsigned long)millis(), peerCount());
 }
 
 // TEMPORARY gesture preview (#8): print each event so thresholds can be tuned by hand. Replaced by events (#12).
@@ -24,8 +35,6 @@ static void onGesture(GestureCode c, int16_t arg) {
   static const char *names[] = {"?", "SHAKE", "TAP", "TILT", "PICKUP", "FACE_DOWN", "FREEFALL"};
   Serial.printf("GESTURE %s arg=%d t=%lu\n", names[c], arg, (unsigned long)millis());
 }
-
-static bool netOk;  // TEMPORARY link check (#6): skip sending when ESP-NOW did not start
 
 static void haltBlink() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -81,9 +90,19 @@ static bool bootStep(uint32_t now) {
                     (unsigned long)(millis() - netStart));
       break;
     }
-    default:  // all ready: keep gestures fed and the RX queue drained while the splash finishes
+    case 3: {
+      HelloPayload self = {};
+      strncpy(self.name, nodeName(), NODE_NAME_LEN);
+      self.caps = caps();
+      self.fw_version = FW_VERSION;
+      peersBegin(self, sendMsg, onPeerChange, now);
+      Serial.printf("peers: beat %u ms, timeout %lu ms\n", BEAT_INTERVAL_MS, (unsigned long)peerTimeoutMs());
+      break;
+    }
+    default:  // all ready: keep gestures fed, answer HELLOs and keep the beat going while the splash finishes
       gesturesUpdate(now);
       transportPoll();
+      peersUpdate(now);
       return true;
   }
   stage++;
@@ -124,15 +143,9 @@ void loop() {
 
   gesturesUpdate(now);
   transportPoll();
+  peersUpdate(now);
 
-  static uint32_t lastTx, lastStats;  // TEMPORARY link check (#6): BEAT every 2 s, stats every 10 s
-  if (netOk && now - lastTx >= 2000) {
-    lastTx = now;
-    Packet out;
-    BeatPayload b = {now / 1000, 0};
-    size_t n = codecBuild(out, MSG_BEAT, nodeId(), &b, sizeof(b));
-    if (!transportSend(&out, n)) Serial.println(F("TX refused"));
-  }
+  static uint32_t lastStats;  // TEMPORARY link check (#6): stats every 10 s
   if (now - lastStats >= 10000) {
     lastStats = now;
     TransportStats st = transportStats();
