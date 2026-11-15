@@ -5,3 +5,4 @@
 // #define OLED_I2C_ADDR 0x3D
 // #define MPU_I2C_ADDR 0x69
 // #define I2C_CLOCK_HZ 800000UL
+// #define GESTURE_FACE_TEST  // idle face driven only by gestures, see gesture_face_test.h

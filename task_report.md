@@ -67,7 +67,7 @@ Entry rules:
 
 ## Open items
 
-- #8: thresholds in `config.h` are placeholders. Needed by hand with the board: each gesture triggers reliably, nothing fires at rest, then final values and false-trigger rate recorded here. Tap detection at 30 Hz sampling is the main risk.
+- #8: thresholds in `config.h` are placeholders. Needed by hand with the board: each gesture triggers reliably, nothing fires at rest, then final values and false-trigger rate recorded here. Tap detection at 30 Hz sampling is the main risk. Hand-test with the gesture face test: `#define GESTURE_FACE_TEST` in `local_config.h` (see `gesture_face_test.h`). It is a header in the sketch folder, not a separate sketch, because an Arduino build copies the sketch folder and cannot reach `src/` from a sibling folder.
 - #7: `imuReadGyro` (+-500 deg/s, 65.5 LSB per deg/s) is not run on hardware yet: pending.
 - Face renderer (#4) runs on hardware (numbers logged). Visual review pending: Ariyan to say how each preset looks. Ariyan to upload and paste Serial: per-preset fps, render us, flush us, free heap. Also note what looks wrong on screen (ring thickness, star shape, lids, bridge arch).
 - hal/display (#3) ran on hardware as part of the face preview: flush 26.2 ms at the default clock.
