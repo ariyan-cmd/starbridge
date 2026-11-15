@@ -11,6 +11,7 @@ Entry rules:
 
 | ID | Date | Decision | Why | Alternatives | Cost |
 |----|------|----------|-----|--------------|------|
+| D-011 | 2026-11-15 | HELLO name is a fixed 16-byte field, zero-padded, not NUL-terminated at full length. CMD is variable length (code + 0..239 arg bytes, length from payload_len). No PROTO_VERSION bump | Fixed sizes make every payload a plain packed struct; the draft said "up to 16 chars" without a layout. Nothing has shipped on v1 yet | Length-prefixed name (saves bytes on short names, needs parsing); NUL-terminated 17-byte name | HELLO is always 19 bytes even for short names. Readers must copy the name with a 16-byte bound, never `strcpy` |
 | D-010 | 2026-11-15 | `origin/main` held the 7 pre-rewrite commits with Claude trailers, so main is replaced by the 12-commit bundle history (force push, lease pinned to c58fe76) | Keep D-008 true on GitHub | Merge both histories (keeps trailers public forever) | Rewrites public history. Old commits stay reachable by hash on GitHub for a while. Anyone who cloned before must re-clone |
 | D-009 | 2026-11-15 | v0.1 split into 16 issues, 8 per person, along the device/network line (Ariyan: display, face, MPU6050, gestures. Saad: protocol, ESP-NOW, identity, peers, events, console, integration) | The wire format and module headers are a clean contract, so both sides can work in parallel | Split by module count only, or by strengths | The split is by interface, not by known strengths. Integration risk is concentrated in #16 and in two handshakes (event codes #8/#12, blink hook #11/#16). Issues were created on 2026-11-15 from Claude Code with `gh` (Saad = `saad-mh`, 16 issues, #1 to #16) and the one-shot script was then deleted |
 | D-008 | 2026-11-15 | No `Co-Authored-By` or `Claude-Session` trailers on commits or PRs. Existing 7 local commits rewritten to remove them | Owner's choice for how history reads | Keep default attribution | Commit hashes changed once, before the first push (the bundle was regenerated). No machine-readable record of which commits Claude wrote. A `commit-msg` hook in `tools/hooks/` enforces it, but it needs `git config core.hooksPath tools/hooks` in each clone |
@@ -26,6 +27,7 @@ Entry rules:
 
 | Date | Plan said | What happened | Impact |
 |------|-----------|---------------|--------|
+| 2026-11-15 | #2 depends on #1 for PROTO_VERSION | `protocol.h` uses `config/config.h` if present, else a stub `PROTO_VERSION 1` | No change once #1 lands; the stub can be deleted then |
 | 2026-11-15 | ESP-NOW works on ESP8266 and ESP32, so either chip is fine | Chip is ESP8266MOD | Use the ESP8266 ESP-NOW API in `net/transport`. No ESP32-only calls |
 | 2026-11-15 | Display example was 128x32 | Switched to 128x64 | Layout constants in `config` use 64. Bring-up test updated |
 | 2026-11-15 | Plan lists six features only | Added a bring-up test folder and a protocol doc before module code | No cost to v0.1 scope. Gives a verified display before the face module starts |
@@ -34,6 +36,7 @@ Entry rules:
 
 | Date | What | Setup | Value |
 |------|------|-------|-------|
+| 2026-11-15 | Payload sizes from `net/protocol.h` | `static_assert`, checked by a host `g++ -std=c++11 -fsyntax-only` (Apple clang), not yet built for ESP8266 | Header 10, HELLO 19, BEAT 5, EVENT 3, TELEMETRY 3, CMD 240 max, Packet 250 |
 | 2026-11-15 | Display bring-up result | `firmware/bringup/oled_test`, 128x64, 400 kHz, SSD1306 at 0x3C | Visual pass, reported clearer than 128x32 |
 | 2026-11-15 | Frames per second, full 128x64 redraw with a moving bar | Bring-up test as first written, clock labelled 400k / 800k / 1M | 38.08 fps, identical at all three labels (reported as 400k/600k/1M; the test actually used 800k) |
 | 2026-11-15 | Debug: identical fps at every clock label | Same | Cause (likely): the Adafruit SSD1306 library resets the I2C clock to its constructor value before every transfer, so `Wire.setClock()` calls in the test had no effect and all three runs were at 400 kHz. Fix: clock now passed to the display constructor via `I2C_CLOCK_HZ`, one measurement per upload. Re-measure at 800k and 1M is pending |
