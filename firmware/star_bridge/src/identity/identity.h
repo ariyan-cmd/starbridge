@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 // Reads the chip ID, loads the name and scans I2C for caps. Name precedence: saved name,
-// then NODE_NAME_DEFAULT (local_config.h), then "<NODE_NAME_PREFIX>-<chip ID hex>", e.g. "starbridge-cf9a8".
+// then NODE_NAME_DEFAULT (local_config.h), then "<NODE_NAME_PREFIX>-<chip ID hex>", e.g. "star-fcf9a8".
 // Call once in setup(), after the display is up. Prints the scan result to Serial.
 void identityInit();
 

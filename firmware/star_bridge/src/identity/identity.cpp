@@ -10,8 +10,8 @@
 static_assert(sizeof(NODE_NAME_DEFAULT) - 1 >= 1 && sizeof(NODE_NAME_DEFAULT) - 1 <= NODE_NAME_LEN,
               "NODE_NAME_DEFAULT must be 1..16 chars");
 #endif
-static_assert(sizeof(NODE_NAME_PREFIX) - 1 >= 1 && sizeof(NODE_NAME_PREFIX) - 1 <= 10,
-              "NODE_NAME_PREFIX must be 1..10 chars");
+static_assert(sizeof(NODE_NAME_PREFIX) - 1 >= 1 && sizeof(NODE_NAME_PREFIX) - 1 <= NODE_NAME_LEN - 7,
+              "NODE_NAME_PREFIX must be 1..9 chars so '-' and all 6 chip-ID hex digits fit");
 
 // Saved at hal/board NV offset 0 (identity owns 0..17).
 struct __attribute__((packed)) NameRecord {
@@ -26,15 +26,12 @@ static uint32_t id;
 static uint16_t capMask;
 static char name[NODE_NAME_LEN + 1];
 
-// NODE_NAME_DEFAULT if set for this node, else "<prefix>-<low hex digits of chip ID>".
+// NODE_NAME_DEFAULT if set for this node, else "<prefix>-<6 hex digits of the 24-bit chip ID>".
 static void defaultName(char *out) {
 #ifdef NODE_NAME_DEFAULT
   strcpy(out, NODE_NAME_DEFAULT);
 #else
-  int digits = NODE_NAME_LEN - (int)(sizeof(NODE_NAME_PREFIX) - 1) - 1;  // room left after "<prefix>-"
-  if (digits > 6) digits = 6;                                           // chip ID is 24 bits
-  snprintf(out, NODE_NAME_LEN + 1, "%s-%0*lx", NODE_NAME_PREFIX, digits,
-           (unsigned long)(id & ((1UL << (4 * digits)) - 1)));         // keep the low (most varied) digits
+  snprintf(out, NODE_NAME_LEN + 1, "%s-%06lx", NODE_NAME_PREFIX, (unsigned long)(id & 0xFFFFFF));
 #endif
 }
 
