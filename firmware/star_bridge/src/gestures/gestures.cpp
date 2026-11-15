@@ -54,7 +54,8 @@ void gesturesFeed(float ax, float ay, float az, uint32_t now) {
     if (!tapSince) { tapSince = now; tapPeak = 0; }
     if (mag > tapPeak) tapPeak = mag;
   } else if (tapSince) {
-    if (now - tapSince <= GESTURE_TAP_MAX_MS) fire(GESTURE_TAP, (int16_t)(tapPeak * 100), now, GESTURE_TAP_LOCK_MS);
+    bool afterPickup = lastFire[GESTURE_PICKUP] && now - lastFire[GESTURE_PICKUP] < GESTURE_TAP_AFTER_PICKUP_MS;
+    if (now - tapSince <= GESTURE_TAP_MAX_MS && !afterPickup) fire(GESTURE_TAP, (int16_t)(tapPeak * 100), now, GESTURE_TAP_LOCK_MS);
     tapSince = 0;
   }
 

@@ -69,7 +69,7 @@
 #define GESTURE_TAP_G 1.8f  // Short spike for a tap.
 #endif
 #ifndef GESTURE_FREEFALL_G
-#define GESTURE_FREEFALL_G 0.3f  // |a| below this means freefall.
+#define GESTURE_FREEFALL_G 0.5f  // |a| below this means freefall (was 0.3, never fired by hand; a cable also drags the board).
 #endif
 
 // Detector timing and extra thresholds (#8). PLACEHOLDERS until tuned by hand: see task_report.md. Used by gestures.
@@ -87,6 +87,9 @@
 #endif
 #ifndef GESTURE_TAP_LOCK_MS
 #define GESTURE_TAP_LOCK_MS 200
+#endif
+#ifndef GESTURE_TAP_AFTER_PICKUP_MS
+#define GESTURE_TAP_AFTER_PICKUP_MS 500  // A pickup jerk looks like a weak tap; ignore taps this long after a pickup.
 #endif
 #ifndef GESTURE_FREEFALL_MIN_MS
 #define GESTURE_FREEFALL_MIN_MS 60  // |a| must stay under GESTURE_FREEFALL_G this long.
@@ -432,7 +435,8 @@ void gesturesFeed(float ax, float ay, float az, uint32_t now) {
     if (!tapSince) { tapSince = now; tapPeak = 0; }
     if (mag > tapPeak) tapPeak = mag;
   } else if (tapSince) {
-    if (now - tapSince <= GESTURE_TAP_MAX_MS) gestureFire(GESTURE_TAP, (int16_t)(tapPeak * 100), now, GESTURE_TAP_LOCK_MS);
+    bool afterPickup = lastFire[GESTURE_PICKUP] && now - lastFire[GESTURE_PICKUP] < GESTURE_TAP_AFTER_PICKUP_MS;
+    if (now - tapSince <= GESTURE_TAP_MAX_MS && !afterPickup) gestureFire(GESTURE_TAP, (int16_t)(tapPeak * 100), now, GESTURE_TAP_LOCK_MS);
     tapSince = 0;
   }
 
@@ -589,7 +593,15 @@ void loop() {
   gfLast = now;
 
   float ax, ay, az;
-  if (imuRead(ax, ay, az)) { applyCal(ax, ay, az); gesturesFeed(ax, ay, az, now); }
+  if (imuRead(ax, ay, az)) {
+    applyCal(ax, ay, az);
+    gesturesFeed(ax, ay, az, now);
+    // Diagnostic for tuning freefall: report every dip of |a| under 0.7 g with its lowest value and length.
+    static float lowMin = 9; static uint8_t lowN; static uint32_t lowT;
+    float mag = sqrtf(ax * ax + ay * ay + az * az);
+    if (mag < 0.7f) { if (!lowN) lowT = now; lowN++; if (mag < lowMin) lowMin = mag; }
+    else if (lowN) { Serial.printf("LOW |a| min=%.2f g, %u samples, %lu ms\n", lowMin, lowN, (unsigned long)(now - lowT)); lowN = 0; lowMin = 9; }
+  }
   if (moodUntil && now >= moodUntil) setMood(IDLE, 0);
 
   float lt = 0, sl = 0, lb = 0, gx = tiltGx, gy = tiltGy, scale = 1.0f;

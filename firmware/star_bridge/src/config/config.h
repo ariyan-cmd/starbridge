@@ -38,7 +38,7 @@
 #define GESTURE_TAP_G 1.8f  // Short spike for a tap.
 #endif
 #ifndef GESTURE_FREEFALL_G
-#define GESTURE_FREEFALL_G 0.3f  // |a| below this means freefall.
+#define GESTURE_FREEFALL_G 0.5f  // |a| below this means freefall (was 0.3, never fired by hand; a cable also drags the board).
 #endif
 
 // Detector timing and extra thresholds (#8). PLACEHOLDERS until tuned by hand: see task_report.md. Used by gestures.
@@ -56,6 +56,9 @@
 #endif
 #ifndef GESTURE_TAP_LOCK_MS
 #define GESTURE_TAP_LOCK_MS 200
+#endif
+#ifndef GESTURE_TAP_AFTER_PICKUP_MS
+#define GESTURE_TAP_AFTER_PICKUP_MS 500  // A pickup jerk looks like a weak tap; ignore taps this long after a pickup.
 #endif
 #ifndef GESTURE_FREEFALL_MIN_MS
 #define GESTURE_FREEFALL_MIN_MS 60  // |a| must stay under GESTURE_FREEFALL_G this long.
