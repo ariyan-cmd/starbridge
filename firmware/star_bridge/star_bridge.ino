@@ -5,6 +5,7 @@
 #include "src/net/protocol.h"  // also compiles its static_asserts on every build
 #include "src/config/config.h"
 #include "src/hal/display.h"
+#include "src/hal/imu.h"
 #include "src/face/face.h"
 
 static void haltBlink() {
@@ -46,6 +47,7 @@ void setup() {
     haltBlink();
   }
   faceInit();
+  if (!imuInit()) Serial.printf("IMU init failed: WHO_AM_I=0x%02X (want 0x68), check wiring and MPU_I2C_ADDR\n", imuWhoAmI());
   Serial.printf("free heap: %u bytes\n", ESP.getFreeHeap());
   presetStart = lastFrame = millis();
 }
@@ -64,6 +66,22 @@ void loop() {
     idx = (idx + 1) % NPRESETS;
     presetStart = now; frames = renderUs = flushUs = 0;
     if (idx == 0) Serial.printf("free heap: %u bytes\n", ESP.getFreeHeap());
+  }
+
+  static uint32_t lastImu, imuStart;  // TEMPORARY IMU check (#7): min/max every loop (~30 Hz), print at 5 Hz, min/max per axis every 10 s
+  static float mn[3] = {99, 99, 99}, mx[3] = {-99, -99, -99};
+  float a3[3];
+  if (imuRead(a3[0], a3[1], a3[2])) {
+    for (int i = 0; i < 3; i++) { mn[i] = min(mn[i], a3[i]); mx[i] = max(mx[i], a3[i]); }
+    if (now - lastImu >= 200) {
+      lastImu = now;
+      Serial.printf("g %+.3f %+.3f %+.3f\n", a3[0], a3[1], a3[2]);
+    }
+    if (now - imuStart >= 10000) {
+      Serial.printf("10 s min/max g: x %+.3f/%+.3f y %+.3f/%+.3f z %+.3f/%+.3f\n", mn[0], mx[0], mn[1], mx[1], mn[2], mx[2]);
+      for (int i = 0; i < 3; i++) { mn[i] = 99; mx[i] = -99; }
+      imuStart = now;
+    }
   }
 
   const FaceParams &t = presets[idx].p;

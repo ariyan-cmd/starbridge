@@ -16,7 +16,7 @@
 #define OLED_I2C_ADDR 0x3C  // SSD1306 address. Used by hal/display.
 #endif
 #ifndef MPU_I2C_ADDR
-#define MPU_I2C_ADDR 0x68  // MPU6050 address, 0x69 if AD0 is high (unconfirmed). Used by hal/imu.
+#define MPU_I2C_ADDR 0x68  // MPU6050 address, 0x69 if AD0 is high (0x68 confirmed on the first node). Used by hal/imu.
 #endif
 #ifndef I2C_CLOCK_HZ
 #define I2C_CLOCK_HZ 400000UL  // I2C clock passed to the display constructor. Used by hal/display.
