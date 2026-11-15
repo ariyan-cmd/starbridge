@@ -11,7 +11,7 @@
     SHAPES : pixels, lines, rects, round rects, circles, triangles, bitmap, bounce
     DISPLAY: dither (half-tone), hardware scroll, contrast sweep
     DESIGN : eye preview (blink, gaze, angry lids)
-    SPEED  : frames per second at 400 kHz / 800 kHz / 1 MHz
+    SPEED  : frames per second at the clock set by I2C_CLOCK_HZ
 
   Type 'r' in the Serial Monitor to rerun everything. After the tests the
   eye preview loops forever.
@@ -30,10 +30,17 @@
 #define I2C_SCL        5           // D1
 #define NORMAL_CONTRAST ((SCREEN_HEIGHT == 32) ? 0x8F : 0xCF)
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+// I2C clock used while talking to the display. The Adafruit library sets this
+// clock itself before every transfer, so calling Wire.setClock() elsewhere has
+// no effect. Change it HERE (try 400000UL, 800000UL, 1000000UL) and re-upload
+// to compare fps. If the screen tears or garbles, go back down.
+#define I2C_CLOCK_HZ   400000UL
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET,
+                         I2C_CLOCK_HZ, 400000UL);
 
 uint8_t oledAddr = 0x3C;
-float fps400 = 0, fps800 = 0, fps1000 = 0;
+float fpsMeasured = 0;
 int testNo = 0;
 
 // 16x16 four-point star (the "Star" in Star-Bridge)
@@ -429,8 +436,7 @@ void testEyes() {
 }
 
 // ---------------------------------------------------------------- SPEED
-float fpsTest(uint32_t clk) {
-  Wire.setClock(clk);
+float fpsTest() {
   uint32_t frames = 0, t0 = millis();
   while (millis() - t0 < 1500) {
     display.clearDisplay();
@@ -438,27 +444,21 @@ float fpsTest(uint32_t clk) {
     display.display();
     frames++;
   }
-  float fps = frames * 1000.0f / (millis() - t0);
-  Wire.setClock(400000);
-  return fps;
+  return frames * 1000.0f / (millis() - t0);
 }
 
 void testSpeed() {
   banner("Speed (fps)");
-  fps400  = fpsTest(400000);
-  fps800  = fpsTest(800000);
-  fps1000 = fpsTest(1000000);
-  Serial.print(F("   400 kHz: ")); Serial.print(fps400);  Serial.println(F(" fps"));
-  Serial.print(F("   800 kHz: ")); Serial.print(fps800);  Serial.println(F(" fps"));
-  Serial.print(F("   1 MHz  : ")); Serial.print(fps1000); Serial.println(F(" fps"));
-  Serial.println(F("   If the bar looked torn or garbled at 800k/1M, stay on 400k."));
+  fpsMeasured = fpsTest();
+  Serial.print(F("   I2C clock ")); Serial.print(I2C_CLOCK_HZ / 1000);
+  Serial.print(F(" kHz: ")); Serial.print(fpsMeasured); Serial.println(F(" fps"));
+  Serial.println(F("   Change I2C_CLOCK_HZ and re-upload to compare. If the bar tore or garbled, go lower."));
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  display.print(F("400k: ")); display.print(fps400, 0);  display.println(F(" fps"));
-  display.print(F("800k: ")); display.print(fps800, 0);  display.println(F(" fps"));
-  display.print(F("1M  : ")); display.print(fps1000, 0); display.println(F(" fps"));
+  display.print(F("I2C ")); display.print(I2C_CLOCK_HZ / 1000); display.println(F(" kHz"));
+  display.print(fpsMeasured, 2); display.println(F(" fps"));
   display.display();
   delay(3500);
 }
@@ -514,7 +514,6 @@ void setup() {
   if (!display.begin(SSD1306_SWITCHCAPVCC, oledAddr)) {
     halt(F("SSD1306 init failed. Check SCREEN_HEIGHT (32 vs 64) and the address."));
   }
-  Wire.setClock(400000);
   Serial.print(F("Display OK at 0x")); Serial.println(oledAddr, HEX);
 
   display.clearDisplay();
