@@ -7,6 +7,7 @@
 #include "src/hal/display.h"
 #include "src/hal/imu.h"
 #include "src/face/face.h"
+#include "src/identity/identity.h"
 
 static void haltBlink() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -47,8 +48,12 @@ void setup() {
     haltBlink();
   }
   faceInit();
+  uint32_t idStart = millis();
+  identityInit();
+  Serial.printf("node %08X \"%s\" caps 0x%04X, identityInit %lu ms\n",
+                nodeId(), nodeName(), caps(), (unsigned long)(millis() - idStart));
   if (!imuInit()) Serial.printf("IMU init failed: WHO_AM_I=0x%02X (want 0x68), check wiring and MPU_I2C_ADDR\n", imuWhoAmI());
-  Serial.printf("free heap: %u bytes\n", ESP.getFreeHeap());
+  Serial.printf("free heap: %u bytes, boot %lu ms\n", ESP.getFreeHeap(), millis());
   presetStart = lastFrame = millis();
 }
 
@@ -66,6 +71,15 @@ void loop() {
     idx = (idx + 1) % NPRESETS;
     presetStart = now; frames = renderUs = flushUs = 0;
     if (idx == 0) Serial.printf("free heap: %u bytes\n", ESP.getFreeHeap());
+  }
+
+  if (Serial.available()) {  // TEMPORARY rename check (#9) until the console (#13): "name <new name>"
+    String line = Serial.readStringUntil('\n');
+    line.trim();
+    if (line.startsWith("name ")) {
+      bool ok = setNodeName(line.c_str() + 5);
+      Serial.printf("set name %s: now \"%s\"\n", ok ? "ok" : "rejected (1..16 printable chars)", nodeName());
+    }
   }
 
   static uint32_t lastImu, imuStart;  // TEMPORARY IMU check (#7): min/max every loop (~30 Hz), print at 5 Hz, min/max per axis every 10 s
