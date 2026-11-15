@@ -11,6 +11,7 @@
 #include "src/identity/identity.h"
 #include "src/net/codec.h"
 #include "src/net/transport.h"
+#include "src/splash/splash.h"
 
 // TEMPORARY two-board link check (#6): print each accepted packet. Replaced by peers (#10) and events (#12).
 static void onPacket(const Packet &p) {
@@ -55,6 +56,39 @@ static uint32_t presetStart, lastFrame, renderUs, flushUs, frames;
 
 static void ease(float &v, float target, float rate, float dt) { v += (target - v) * (1 - expf(-rate * dt)); }
 
+// Boot init, one step per splash frame so the animation keeps moving (see splash.h).
+// Add a step for anything that must be ready before the UI shows; the splash holds until the last one is done.
+static bool bootStep(uint32_t) {
+  static uint8_t stage;
+  switch (stage) {
+    case 0: {
+      faceInit();
+      uint32_t idStart = millis();
+      identityInit();
+      Serial.printf("node %08X \"%s\" caps 0x%04X, identityInit %lu ms\n",
+                    nodeId(), nodeName(), caps(), (unsigned long)(millis() - idStart));
+      break;
+    }
+    case 1:
+      if (!imuInit()) Serial.printf("IMU init failed: WHO_AM_I=0x%02X (want 0x68), check wiring and MPU_I2C_ADDR\n", imuWhoAmI());
+      gesturesBegin(onGesture);
+      break;
+    case 2: {
+      codecInit(ESP.random());  // random first seq, see D-016
+      uint32_t netStart = millis();
+      netOk = transportInit(onPacket);
+      Serial.printf("ESP-NOW %s on channel %d, transportInit %lu ms\n", netOk ? "up" : "FAILED", ESPNOW_CHANNEL,
+                    (unsigned long)(millis() - netStart));
+      break;
+    }
+    default:  // all ready: keep draining the RX queue while the splash finishes
+      transportPoll();
+      return true;
+  }
+  stage++;
+  return false;
+}
+
 void setup() {
   Serial.begin(115200);
   delay(300);
@@ -64,18 +98,9 @@ void setup() {
     Serial.println(F("Display init failed: check wiring, OLED_I2C_ADDR and SCREEN_HEIGHT"));
     haltBlink();
   }
-  faceInit();
-  uint32_t idStart = millis();
-  identityInit();
-  Serial.printf("node %08X \"%s\" caps 0x%04X, identityInit %lu ms\n",
-                nodeId(), nodeName(), caps(), (unsigned long)(millis() - idStart));
-  if (!imuInit()) Serial.printf("IMU init failed: WHO_AM_I=0x%02X (want 0x68), check wiring and MPU_I2C_ADDR\n", imuWhoAmI());
-  gesturesBegin(onGesture);
-  codecInit(ESP.random());  // random first seq, see D-016
-  uint32_t netStart = millis();
-  netOk = transportInit(onPacket);
-  Serial.printf("ESP-NOW %s on channel %d, transportInit %lu ms\n", netOk ? "up" : "FAILED", ESPNOW_CHANNEL,
-                (unsigned long)(millis() - netStart));
+  uint32_t splashStart = millis();
+  splashRun(bootStep);
+  Serial.printf("splash %lu ms\n", (unsigned long)(millis() - splashStart));
   Serial.printf("free heap: %u bytes, boot %lu ms\n", ESP.getFreeHeap(), millis());
   presetStart = lastFrame = millis();
 }
