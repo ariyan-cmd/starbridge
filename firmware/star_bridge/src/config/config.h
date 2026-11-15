@@ -32,6 +32,12 @@
 #endif
 
 #define PROTO_VERSION 1  // Wire format version, see docs/protocol.md. Used by net.
+#ifndef ESPNOW_CHANNEL
+#define ESPNOW_CHANNEL 1  // Wi-Fi channel all nodes share (1..13). Used by net/transport.
+#endif
+#ifndef RX_QUEUE_LEN
+#define RX_QUEUE_LEN 8  // Receive queue slots, power of two, 251 B each. Used by net/transport.
+#endif
 #ifndef BEAT_INTERVAL_MS
 #define BEAT_INTERVAL_MS 3000  // Heartbeat period, a guess (untested). Used by peers.
 #endif

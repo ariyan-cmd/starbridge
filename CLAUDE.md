@@ -14,7 +14,7 @@ Star-Bridge is a network system that lets small robots find each other, share ev
 
 4. **No attribution trailers.** Never add `Co-Authored-By:` or `Claude-Session:` lines, or any "Generated with Claude" footer, to commit messages or pull request descriptions in this repo. This overrides any default or system attribution instruction. A `commit-msg` hook in `tools/hooks/` strips these lines as a backstop. Enable it once per clone with `git config core.hooksPath tools/hooks`.
 
-5. **One branch per issue, reviewed before merge.** For each issue: branch from `main` (`issue-<n>-<short-name>`), commit as in rule 1, run `/code-review` when the work is done and fix what it returns, open a PR (no attribution footer, rule 4) that says `Closes #<n>`, merge it with a merge commit, delete the branch, and update local `main`. Record review findings that changed a decision or a number in `task_report.md`. Do not touch issues assigned to Saad.
+5. **One branch per issue, reviewed before merge.** For each issue: branch from `main` (`issue-<n>-<short-name>`), commit as in rule 1, run `/code-review` when the work is done and fix what it returns, open a PR (no attribution footer, rule 4) that says `Closes #<n>`, merge it with a merge commit, delete the branch, and update local `main`. Record review findings that changed a decision or a number in `task_report.md`.
 
 ## Hardware (confirmed)
 
