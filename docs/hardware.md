@@ -22,6 +22,6 @@ Display and accelerometer share the same I2C bus (different addresses).
 
 ## To fill in
 
-- Confirm the MPU6050 address with an I2C scan (AD0 pin level)
+- Confirm the MPU6050 address: the sketch prints every I2C device at boot (0x68 expected, 0x69 if AD0 is high; change `MPU_I2C_ADDR` in `local_config.h`). Result pending hardware run
 - Whether any analog or digital sensors are fitted (DHT, LDR) and on which pins
 - Power source and battery sensing
