@@ -8,3 +8,4 @@ void displayFlush();            // Sends the whole framebuffer over I2C (~26 ms 
 void displaySetContrast(uint8_t c);
 void displayDim(bool on);
 Adafruit_GFX &displayGfx();     // Draw target (SCREEN_WIDTH x SCREEN_HEIGHT, 1-bit).
+uint8_t *displayBuffer();       // Raw framebuffer, SSD1306 page layout: byte x + (y/8)*W, bit y&7.

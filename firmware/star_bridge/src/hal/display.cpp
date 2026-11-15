@@ -25,3 +25,4 @@ void displaySetContrast(uint8_t c) {
 
 void displayDim(bool on) { oled.dim(on); }
 Adafruit_GFX &displayGfx() { return oled; }
+uint8_t *displayBuffer() { return oled.getBuffer(); }
