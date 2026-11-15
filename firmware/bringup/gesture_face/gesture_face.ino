@@ -88,11 +88,11 @@
 #ifndef GESTURE_TAP_LOCK_MS
 #define GESTURE_TAP_LOCK_MS 200
 #endif
-#ifndef GESTURE_TAP_AFTER_PICKUP_MS
-#define GESTURE_TAP_AFTER_PICKUP_MS 500  // A pickup jerk looks like a weak tap; ignore taps this long after a pickup.
+#ifndef GESTURE_TAP_QUIET_MS
+#define GESTURE_TAP_QUIET_MS 500  // A pickup or shake jerk looks like weak taps; ignore taps this long after one.
 #endif
 #ifndef GESTURE_FREEFALL_MIN_MS
-#define GESTURE_FREEFALL_MIN_MS 60  // |a| must stay under GESTURE_FREEFALL_G this long.
+#define GESTURE_FREEFALL_MIN_MS 30  // |a| under GESTURE_FREEFALL_G for 2 samples (about 67 ms). Measured dips: 1 to 2 samples.
 #endif
 #ifndef GESTURE_FREEFALL_LOCK_MS
 #define GESTURE_FREEFALL_LOCK_MS 1000
@@ -143,6 +143,7 @@ Adafruit_GFX &displayGfx();     // Draw target (SCREEN_WIDTH x SCREEN_HEIGHT, 1-
 
 bool imuInit();                                 // Wake, set +-4 g / 100 Hz. False if absent or WHO_AM_I is not 0x68.
 uint8_t imuWhoAmI();                            // Last WHO_AM_I value read (0 if the chip did not answer). For diagnostics.
+uint32_t imuResets();                           // Times the chip was found reset (read exactly 0,0,0) and re-configured.
 bool imuRead(float &ax, float &ay, float &az);  // g. False on I2C failure (outputs untouched).
 bool imuReadGyro(float &gx, float &gy, float &gz);  // deg/s (+-500 range). False on I2C failure.
 
@@ -221,8 +222,6 @@ void displayDim(bool on) { oled.dim(on); }
 Adafruit_GFX &displayGfx() { return oled; }
 
 // ---------------- hal/imu ----------------
-#include <Wire.h>
-
 enum : uint8_t {
   REG_SMPLRT_DIV = 0x19, REG_CONFIG = 0x1A, REG_GYRO_CFG = 0x1B, REG_ACCEL_CFG = 0x1C,
   REG_ACCEL_OUT = 0x3B, REG_GYRO_OUT = 0x43, REG_PWR_MGMT_1 = 0x6B, REG_WHO_AM_I = 0x75,
@@ -231,7 +230,9 @@ static const float ACCEL_LSB_PER_G = 8192.0f;   // +-4 g range
 static const float GYRO_LSB_PER_DPS = 65.5f;    // +-500 deg/s range
 
 static uint8_t whoAmI;
-static bool ready;  // set only after init fully succeeds, so a half-configured chip never reads as valid
+static bool ready;       // set only after the chip is fully configured, so a half-configured chip never reads as valid
+static bool inited;      // WHO_AM_I has passed once
+static uint32_t resets;  // times a reading of exactly 0,0,0 forced a re-configure
 
 static bool writeReg(uint8_t reg, uint8_t v) {
   Wire.beginTransmission(MPU_I2C_ADDR);
@@ -248,19 +249,7 @@ static bool readRegs(uint8_t reg, uint8_t *buf, uint8_t n) {
   return true;
 }
 
-static bool readXyz(uint8_t reg, float lsbPerUnit, float &x, float &y, float &z) {
-  uint8_t b[6];
-  if (!readRegs(reg, b, 6)) return false;
-  x = (int16_t)((b[0] << 8) | b[1]) / lsbPerUnit;
-  y = (int16_t)((b[2] << 8) | b[3]) / lsbPerUnit;
-  z = (int16_t)((b[4] << 8) | b[5]) / lsbPerUnit;
-  return true;
-}
-
-bool imuInit() {
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-  whoAmI = 0; ready = false;
-  if (!readRegs(REG_WHO_AM_I, &whoAmI, 1) || whoAmI != 0x68) return false;  // 0x68 even when AD0 is high
+static bool configure() {
   ready = writeReg(REG_PWR_MGMT_1, 0x01)   // wake, clock from gyro X PLL
        && writeReg(REG_CONFIG, 0x03)       // DLPF 44 Hz, base rate 1 kHz
        && writeReg(REG_SMPLRT_DIV, 9)      // 1 kHz / 10 = 100 Hz
@@ -270,9 +259,35 @@ bool imuInit() {
   return ready;
 }
 
+static bool readXyz(uint8_t reg, float lsbPerUnit, float &x, float &y, float &z, bool zeroMeansReset) {
+  uint8_t b[6];
+  if (!readRegs(reg, b, 6)) return false;
+  if (zeroMeansReset && !(b[0] | b[1] | b[2] | b[3] | b[4] | b[5])) {  // a live accelerometer is never exactly 0,0,0: the chip was reset or slept
+    resets++; ready = false;
+    return false;
+  }
+  x = (int16_t)((b[0] << 8) | b[1]) / lsbPerUnit;
+  y = (int16_t)((b[2] << 8) | b[3]) / lsbPerUnit;
+  z = (int16_t)((b[4] << 8) | b[5]) / lsbPerUnit;
+  return true;
+}
+
+bool imuInit() {
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  whoAmI = 0; ready = inited = false;
+  if (!readRegs(REG_WHO_AM_I, &whoAmI, 1) || whoAmI != 0x68) return false;  // 0x68 even when AD0 is high
+  inited = true;
+  return configure();
+}
+
 uint8_t imuWhoAmI() { return whoAmI; }
-bool imuRead(float &ax, float &ay, float &az) { return ready && readXyz(REG_ACCEL_OUT, ACCEL_LSB_PER_G, ax, ay, az); }
-bool imuReadGyro(float &gx, float &gy, float &gz) { return ready && readXyz(REG_GYRO_OUT, GYRO_LSB_PER_DPS, gx, gy, gz); }
+uint32_t imuResets() { return resets; }
+bool imuRead(float &ax, float &ay, float &az) {
+  if (!inited) return false;
+  if (!ready) { configure(); return false; }  // recover after a reset; this sample is skipped
+  return readXyz(REG_ACCEL_OUT, ACCEL_LSB_PER_G, ax, ay, az, true);
+}
+bool imuReadGyro(float &gx, float &gy, float &gz) { return ready && readXyz(REG_GYRO_OUT, GYRO_LSB_PER_DPS, gx, gy, gz, false); }
 
 // ---------------- face ----------------
 #include <math.h>
@@ -415,7 +430,9 @@ void gesturesFeed(float ax, float ay, float az, uint32_t now) {
 
   // FREEFALL: |a| near zero for a short run.
   static uint32_t ffSince;
-  if (held(mag < GESTURE_FREEFALL_G, ffSince, now) >= GESTURE_FREEFALL_MIN_MS) gestureFire(GESTURE_FREEFALL, 0, now, GESTURE_FREEFALL_LOCK_MS);
+  static bool ffFired;
+  if (held(mag < GESTURE_FREEFALL_G, ffSince, now) >= GESTURE_FREEFALL_MIN_MS && !ffFired) { ffFired = true; gestureFire(GESTURE_FREEFALL, 0, now, GESTURE_FREEFALL_LOCK_MS); }
+  if (mag > GESTURE_FREEFALL_G + 0.3f) ffFired = false;  // fire once per fall, re-arm when clearly out of it
 
   // SHAKE: N rising edges through the shake threshold inside a window.
   static bool above;
@@ -435,8 +452,9 @@ void gesturesFeed(float ax, float ay, float az, uint32_t now) {
     if (!tapSince) { tapSince = now; tapPeak = 0; }
     if (mag > tapPeak) tapPeak = mag;
   } else if (tapSince) {
-    bool afterPickup = lastFire[GESTURE_PICKUP] && now - lastFire[GESTURE_PICKUP] < GESTURE_TAP_AFTER_PICKUP_MS;
-    if (now - tapSince <= GESTURE_TAP_MAX_MS && !afterPickup) gestureFire(GESTURE_TAP, (int16_t)(tapPeak * 100), now, GESTURE_TAP_LOCK_MS);
+    bool afterJerk = (lastFire[GESTURE_PICKUP] && now - lastFire[GESTURE_PICKUP] < GESTURE_TAP_QUIET_MS) ||
+                     (lastFire[GESTURE_SHAKE] && now - lastFire[GESTURE_SHAKE] < GESTURE_TAP_QUIET_MS);
+    if (now - tapSince <= GESTURE_TAP_MAX_MS && !afterJerk) gestureFire(GESTURE_TAP, (int16_t)(tapPeak * 100), now, GESTURE_TAP_LOCK_MS);
     tapSince = 0;
   }
 
@@ -596,6 +614,9 @@ void loop() {
   if (imuRead(ax, ay, az)) {
     applyCal(ax, ay, az);
     gesturesFeed(ax, ay, az, now);
+    // Diagnostic: the accelerometer was found reset (read exactly 0,0,0) and was re-configured.
+    static uint32_t seenResets;
+    if (imuResets() != seenResets) { seenResets = imuResets(); Serial.println(F("IMU was reset (read 0,0,0): re-configured")); }
     // Diagnostic for tuning freefall: report every dip of |a| under 0.7 g with its lowest value and length.
     static float lowMin = 9; static uint8_t lowN; static uint32_t lowT;
     float mag = sqrtf(ax * ax + ay * ay + az * az);

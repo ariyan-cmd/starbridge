@@ -57,11 +57,11 @@
 #ifndef GESTURE_TAP_LOCK_MS
 #define GESTURE_TAP_LOCK_MS 200
 #endif
-#ifndef GESTURE_TAP_AFTER_PICKUP_MS
-#define GESTURE_TAP_AFTER_PICKUP_MS 500  // A pickup jerk looks like a weak tap; ignore taps this long after a pickup.
+#ifndef GESTURE_TAP_QUIET_MS
+#define GESTURE_TAP_QUIET_MS 500  // A pickup or shake jerk looks like weak taps; ignore taps this long after one.
 #endif
 #ifndef GESTURE_FREEFALL_MIN_MS
-#define GESTURE_FREEFALL_MIN_MS 60  // |a| must stay under GESTURE_FREEFALL_G this long.
+#define GESTURE_FREEFALL_MIN_MS 30  // |a| under GESTURE_FREEFALL_G for 2 samples (about 67 ms). Measured dips: 1 to 2 samples.
 #endif
 #ifndef GESTURE_FREEFALL_LOCK_MS
 #define GESTURE_FREEFALL_LOCK_MS 1000

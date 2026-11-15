@@ -34,7 +34,9 @@ void gesturesFeed(float ax, float ay, float az, uint32_t now) {
 
   // FREEFALL: |a| near zero for a short run.
   static uint32_t ffSince;
-  if (held(mag < GESTURE_FREEFALL_G, ffSince, now) >= GESTURE_FREEFALL_MIN_MS) fire(GESTURE_FREEFALL, 0, now, GESTURE_FREEFALL_LOCK_MS);
+  static bool ffFired;
+  if (held(mag < GESTURE_FREEFALL_G, ffSince, now) >= GESTURE_FREEFALL_MIN_MS && !ffFired) { ffFired = true; fire(GESTURE_FREEFALL, 0, now, GESTURE_FREEFALL_LOCK_MS); }
+  if (mag > GESTURE_FREEFALL_G + 0.3f) ffFired = false;  // fire once per fall, re-arm when clearly out of it
 
   // SHAKE: N rising edges through the shake threshold inside a window.
   static bool above;
@@ -54,8 +56,9 @@ void gesturesFeed(float ax, float ay, float az, uint32_t now) {
     if (!tapSince) { tapSince = now; tapPeak = 0; }
     if (mag > tapPeak) tapPeak = mag;
   } else if (tapSince) {
-    bool afterPickup = lastFire[GESTURE_PICKUP] && now - lastFire[GESTURE_PICKUP] < GESTURE_TAP_AFTER_PICKUP_MS;
-    if (now - tapSince <= GESTURE_TAP_MAX_MS && !afterPickup) fire(GESTURE_TAP, (int16_t)(tapPeak * 100), now, GESTURE_TAP_LOCK_MS);
+    bool afterJerk = (lastFire[GESTURE_PICKUP] && now - lastFire[GESTURE_PICKUP] < GESTURE_TAP_QUIET_MS) ||
+                     (lastFire[GESTURE_SHAKE] && now - lastFire[GESTURE_SHAKE] < GESTURE_TAP_QUIET_MS);
+    if (now - tapSince <= GESTURE_TAP_MAX_MS && !afterJerk) fire(GESTURE_TAP, (int16_t)(tapPeak * 100), now, GESTURE_TAP_LOCK_MS);
     tapSince = 0;
   }
 
