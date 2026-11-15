@@ -27,6 +27,7 @@ Star_bridge/
         console/             serial commands
     bringup/                 throwaway hardware tests, not part of the main build
       oled_test/             display bring-up (already verified on 128x64)
+  test/                      host-side g++ tests, kept out of the sketch so Arduino skips them
 ```
 
 ## Rules we follow
