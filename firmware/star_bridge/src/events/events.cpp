@@ -82,8 +82,11 @@ void eventsUpdate(uint32_t now) {
   }
   if (readTemp && send && now - lastTelemetry >= TELEMETRY_INTERVAL_MS) {
     lastTelemetry = now;
-    TelemetryPayload t = {SENSOR_TEMP, 0};
-    if (readTemp(t.value_x100)) send(MSG_TELEMETRY, &t, sizeof(t));
+    int16_t v;  // packed field cannot bind to a reference
+    if (readTemp(v)) {
+      TelemetryPayload t = {SENSOR_TEMP, v};
+      send(MSG_TELEMETRY, &t, sizeof(t));
+    }
   }
 }
 
