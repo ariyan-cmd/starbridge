@@ -58,7 +58,7 @@ static void ease(float &v, float target, float rate, float dt) { v += (target - 
 
 // Boot init, one step per splash frame so the animation keeps moving (see splash.h).
 // Add a step for anything that must be ready before the UI shows; the splash holds until the last one is done.
-static bool bootStep(uint32_t) {
+static bool bootStep(uint32_t now) {
   static uint8_t stage;
   switch (stage) {
     case 0: {
@@ -81,7 +81,8 @@ static bool bootStep(uint32_t) {
                     (unsigned long)(millis() - netStart));
       break;
     }
-    default:  // all ready: keep draining the RX queue while the splash finishes
+    default:  // all ready: keep gestures fed and the RX queue drained while the splash finishes
+      gesturesUpdate(now);
       transportPoll();
       return true;
   }

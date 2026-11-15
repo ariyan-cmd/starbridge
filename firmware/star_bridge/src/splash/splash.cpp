@@ -17,7 +17,7 @@
 // pattern until none are left.
 
 static const char *NAME = "STARBRIDGE";  // 10 chars * 12 px = 120 px at size 2
-static const char *VERSION = "v0.1.2";
+static const char *VERSION = FW_VERSION_STR;
 
 static const int NAME_Y = 33;  // final y of the name (size 2, 16 px tall)
 static const int CAP_Y = 54;   // final y of the version (size 1, 8 px tall)
@@ -51,20 +51,6 @@ static float easeOut(float t) {  // fast start, soft landing
 
 static float smooth(float t) { return t * t * (3.0f - 2.0f * t); }
 
-// ---------------- 1-bit fade (ordered dither) ----------------
-static const uint8_t BAYER[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
-
-// Keep only level/16 of the pixels in rows y0..y1. 16 = untouched, 0 = all cleared.
-static void ditherRows(int y0, int y1, uint8_t level) {
-  if (level >= 16) return;
-  if (y0 < 0) y0 = 0;
-  if (y1 > SCREEN_HEIGHT - 1) y1 = SCREEN_HEIGHT - 1;
-  uint8_t *buf = displayBuffer();  // page layout: x + (y/8)*W, bit y&7
-  for (int y = y0; y <= y1; y++)
-    for (int x = 0; x < SCREEN_WIDTH; x++)
-      if (BAYER[y & 3][x & 3] >= level) buf[x + (y >> 3) * SCREEN_WIDTH] &= ~(1 << (y & 7));
-}
-
 // Centered text that rises `rise` px while fading in. p = 0..1.
 static void fadeUpText(const char *s, uint8_t size, int y, int rise, float p) {
   if (p <= 0.0f) return;
@@ -73,13 +59,13 @@ static void fadeUpText(const char *s, uint8_t size, int y, int rise, float p) {
   g->setTextSize(size);
   g->setCursor((SCREEN_WIDTH - w) / 2, y + off);
   g->print(s);
-  ditherRows(y, y + 8 * size + rise, (uint8_t)(p * 16.0f + 0.5f));
+  displayDither(y, y + 8 * size + rise, (uint8_t)(p * 16.0f + 0.5f));
 }
 
 // ---------------- warp starfield ----------------
 struct Star { float x, y, z; };  // x,y in [-1,1], z in (0,1], smaller z = closer
 static const uint8_t N_STARS = 45;
-static Star stars[N_STARS];
+static Star *stars;  // points at splashRun's stack array: no RAM held after boot
 
 static const float K_X = 24.0f;  // projection scale, x
 static const float K_Y = 14.0f;  // projection scale, y (screen is half as tall)
@@ -141,7 +127,7 @@ static void drawSparkle(int cx, int cy, int r) {
 // ---------------- background sparkles (shown with the name) ----------------
 // Each one cycles: dot -> small plus -> bigger plus -> small plus -> dot -> dark.
 static const uint8_t N_AMB = 14;
-static uint8_t ambX[N_AMB], ambY[N_AMB], ambPh[N_AMB];
+static uint8_t *ambX, *ambY, *ambPh;  // also on splashRun's stack
 
 static bool ambAllowed(int x, int y) {
   // keep clear of the big star (top centre), the name (y 33-48) and the version (y 54-61, centre)
@@ -186,6 +172,9 @@ static void drawAmbient(uint32_t t, uint32_t anim) {
 // ---------------- splash ----------------
 void splashRun(bool (*work)(uint32_t nowMs)) {
   g = &displayGfx();
+  Star starBuf[N_STARS];
+  uint8_t amb[3][N_AMB];
+  stars = starBuf; ambX = amb[0]; ambY = amb[1]; ambPh = amb[2];
   for (uint8_t i = 0; i < N_STARS; i++) spawnStar(i, true);
   initAmbient();
   g->setTextWrap(false);
@@ -228,7 +217,7 @@ void splashRun(bool (*work)(uint32_t nowMs)) {
 
     if (t >= T_FADE_START) {  // final fade-out of the whole screen
       float p = ramp(t, T_FADE_START, T_END);
-      ditherRows(0, SCREEN_HEIGHT - 1, (uint8_t)((1.0f - p) * 16.0f + 0.5f));
+      displayDither(0, SCREEN_HEIGHT - 1, (uint8_t)((1.0f - p) * 16.0f + 0.5f));
     }
 
     displayFlush();
@@ -236,4 +225,7 @@ void splashRun(bool (*work)(uint32_t nowMs)) {
   }
   displayClear();
   displayFlush();
+  g->setTextSize(1);  // back to GFX defaults for whoever draws text next
+  g->setTextWrap(true);
+  g->setTextColor(1, 0);
 }
