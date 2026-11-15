@@ -22,6 +22,13 @@
 #define I2C_CLOCK_HZ 400000UL  // I2C clock passed to the display constructor. Used by hal/display.
 #endif
 
+#ifndef NODE_NAME_DEFAULT
+#define NODE_NAME_DEFAULT "starbridge"  // Name until one is set at runtime, 1..16 chars. Used by identity.
+#endif
+#ifndef SENSOR_CAPS
+#define SENSOR_CAPS 0  // Fitted sensors I2C cannot detect: CAP_TEMP and/or CAP_LIGHT (net/protocol.h). Used by identity.
+#endif
+
 #define PROTO_VERSION 1  // Wire format version, see docs/protocol.md. Used by net.
 #ifndef BEAT_INTERVAL_MS
 #define BEAT_INTERVAL_MS 3000  // Heartbeat period, a guess (untested). Used by peers.
