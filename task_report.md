@@ -40,9 +40,10 @@ Entry rules:
 
 | Date | What | Setup | Value |
 |------|------|-------|-------|
+| 2026-11-15 | Codec ESP8266 build (#5) | `arduino-cli compile -b esp8266:esp8266:nodemcuv2`, core 3.1.2, Adafruit SSD1306 2.5.17, GFX 1.13.0, arduino-cli 1.6.0 (Homebrew, Saad's Mac); `xtensa-lx106-elf-nm/size` on `codec.cpp.o` | Compiles, no errors. `codec.cpp.o`: text 507 B, bss 100 B (seenSrc 64, seenSeq 32, nextSeq 2, seenNext 1, seenCount 1), so the dedupe table is 96 B on target, same as host. Sketch totals unchanged (RAM 30316 / 80192, flash 259732) because nothing calls the codec yet and the linker drops it; the 100 B lands when transport (#6) uses it |
 | 2026-11-15 | Review of #5 (`/code-review` high) | 5 findings | Fixed: parse copies the payload with `memmove` so in-place parse (frame aliasing out) is defined; receiver rules added to `docs/protocol.md`; `test/` added to the README layout. Left: `codecInit` random seed is wired in #16; host test has no runner script or CI |
 | 2026-11-15 | Codec host test (#5) | `test/codec_test.cpp`, `g++ -std=c++11 -Wall -Wextra` (Apple clang, arm64 macOS) | All checks pass, no warnings. Covers build fields + seq wrap, round-trip, truncated, wrong version, unknown type, wrong size per type, duplicates, ring eviction |
-| 2026-11-15 | Codec static RAM (#5) | Symbol addresses in the host `codec.o` (arm64 clang); ESP8266 build not run, no arduino-cli or ESP core on this Mac | Dedupe table 96 B (seenSrc 64 + seenSeq 32), plus 4 B counters (nextSeq 2, seenNext 1, seenCount 1) = 100 B .bss. ESP8266 compile and its RAM figure: pending |
+| 2026-11-15 | Codec static RAM (#5) | Symbol addresses in the host `codec.o` (arm64 clang); ESP8266 figure in the row above | Dedupe table 96 B (seenSrc 64 + seenSeq 32), plus 4 B counters (nextSeq 2, seenNext 1, seenCount 1) = 100 B .bss |
 | 2026-11-15 | Payload sizes from `net/protocol.h` | `static_assert`, checked by a host `g++ -std=c++11 -fsyntax-only` (Apple clang), not yet built for ESP8266 | Header 10, HELLO 19, BEAT 5, EVENT 3, TELEMETRY 3, CMD 240 max, Packet 250 |
 | 2026-11-15 | Face preset `idle`: fps, render, flush | Face preview in `star_bridge.ino`, 128x64, I2C_CLOCK_HZ default 400000 (header line not pasted, so clock assumed), 4 s per preset, full redraw every frame, no delay | 29.7 fps (119 frames), render 7280 us, flush 26245 us |
 | 2026-11-15 | Face preset `searching`: fps, render, flush | Face preview in `star_bridge.ino`, 128x64, I2C_CLOCK_HZ default 400000 (header line not pasted, so clock assumed), 4 s per preset, full redraw every frame, no delay | 29.8 fps (119 frames), render 7167 us, flush 26252 us |
@@ -65,7 +66,6 @@ Entry rules:
 
 ## Open items
 
-- Compile `net/codec` for ESP8266 (`arduino-cli compile -b esp8266:esp8266:nodemcuv2 firmware/star_bridge`) and record RAM: not done, no toolchain on Saad's Mac (#5).
 - Face renderer (#4) runs on hardware (numbers logged). Visual review pending: Ariyan to say how each preset looks. Ariyan to upload and paste Serial: per-preset fps, render us, flush us, free heap. Also note what looks wrong on screen (ring thickness, star shape, lids, bridge arch).
 - hal/display (#3) ran on hardware as part of the face preview: flush 26.2 ms at the default clock.
 - Gesture thresholds in `config.h` (shake 2.0 g, tap 1.8 g, freefall 0.3 g) are placeholders: pending measurement.
