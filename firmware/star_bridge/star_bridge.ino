@@ -9,6 +9,14 @@
 #include "src/gestures/gestures.h"
 #include "src/face/face.h"
 #include "src/identity/identity.h"
+#include "src/net/codec.h"
+#include "src/net/transport.h"
+
+// TEMPORARY two-board link check (#6): print each accepted packet. Replaced by peers (#10) and events (#12).
+static void onPacket(const Packet &p) {
+  Serial.printf("RX type %u from %08X seq %u len %u t=%lu\n", p.hdr.type, p.hdr.src_id, p.hdr.seq,
+                p.hdr.payload_len, (unsigned long)millis());
+}
 
 // TEMPORARY gesture preview (#8): print each event so thresholds can be tuned by hand. Replaced by events (#12).
 static void onGesture(GestureCode c, int16_t arg) {
@@ -61,6 +69,11 @@ void setup() {
                 nodeId(), nodeName(), caps(), (unsigned long)(millis() - idStart));
   if (!imuInit()) Serial.printf("IMU init failed: WHO_AM_I=0x%02X (want 0x68), check wiring and MPU_I2C_ADDR\n", imuWhoAmI());
   gesturesBegin(onGesture);
+  codecInit(ESP.random());  // random first seq, see D-016
+  uint32_t netStart = millis();
+  bool netOk = transportInit(onPacket);
+  Serial.printf("ESP-NOW %s on channel %d, transportInit %lu ms\n", netOk ? "up" : "FAILED", ESPNOW_CHANNEL,
+                (unsigned long)(millis() - netStart));
   Serial.printf("free heap: %u bytes, boot %lu ms\n", ESP.getFreeHeap(), millis());
   presetStart = lastFrame = millis();
 }
@@ -82,6 +95,23 @@ void loop() {
   }
 
   gesturesUpdate(now);
+  transportPoll();
+
+  static uint32_t lastTx, lastStats;  // TEMPORARY link check (#6): BEAT every 2 s, stats every 10 s
+  if (now - lastTx >= 2000) {
+    lastTx = now;
+    Packet out;
+    BeatPayload b = {now / 1000, 0};
+    size_t n = codecBuild(out, MSG_BEAT, nodeId(), &b, sizeof(b));
+    if (!transportSend(&out, n)) Serial.println(F("TX refused"));
+  }
+  if (now - lastStats >= 10000) {
+    lastStats = now;
+    TransportStats st = transportStats();
+    Serial.printf("net rx %lu dropped %lu parseErr %lu sendOk %lu sendFail %lu queued %u\n",
+                  (unsigned long)st.rx, (unsigned long)st.rxDropped, (unsigned long)st.parseErr,
+                  (unsigned long)st.sendOk, (unsigned long)st.sendFail, st.queued);
+  }
 
   static String line;  // TEMPORARY rename check (#9) until the console (#13): "name <new name>"
   while (Serial.available()) {  // non-blocking: readStringUntil would stall the face for up to 1 s
