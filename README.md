@@ -24,6 +24,7 @@ Star_bridge/
         net/                 packet envelope + ESP-NOW transport
         peers/               peer table, HELLO/BEAT, timeouts
         events/              event bus: local gestures out, remote events in
+        splash/              boot animation, boot init runs behind it
         console/             serial commands
     bringup/                 throwaway hardware tests, not part of the main build
       oled_test/             display bring-up (already verified on 128x64)

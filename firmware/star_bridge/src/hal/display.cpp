@@ -25,3 +25,13 @@ void displaySetContrast(uint8_t c) {
 
 void displayDim(bool on) { oled.dim(on); }
 Adafruit_GFX &displayGfx() { return oled; }
+void displayDither(int y0, int y1, uint8_t level) {
+  static const uint8_t BAYER[4][4] = {{0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
+  if (level >= 16) return;
+  if (y0 < 0) y0 = 0;
+  if (y1 > SCREEN_HEIGHT - 1) y1 = SCREEN_HEIGHT - 1;
+  uint8_t *buf = oled.getBuffer();  // SSD1306 page layout: byte x + (y/8)*W, bit y&7
+  for (int y = y0; y <= y1; y++)
+    for (int x = 0; x < SCREEN_WIDTH; x++)
+      if (BAYER[y & 3][x & 3] >= level) buf[x + (y >> 3) * SCREEN_WIDTH] &= ~(1 << (y & 7));
+}

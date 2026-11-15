@@ -32,6 +32,7 @@
 #endif
 
 #define PROTO_VERSION 1  // Wire format version, see docs/protocol.md. Used by net.
+#define FW_VERSION_STR "v0.1.2"  // Version shown on the splash; keep in step with FW_VERSION once peers (#10) adds it. Used by splash.
 #ifndef ESPNOW_CHANNEL
 #define ESPNOW_CHANNEL 1  // Wi-Fi channel all nodes share (1..13). Used by net/transport.
 #endif
