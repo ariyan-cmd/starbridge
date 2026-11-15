@@ -44,6 +44,10 @@ C structs in `firmware/star_bridge/src/net/protocol.h`, packed, with `static_ass
 | CMD | code | u8 | command code |
 | CMD | args | n x u8 | n = payload_len - 1 |
 
+## Receiver rules
+
+Implemented in `net/codec`. A frame is dropped if it is shorter than the header, `version` is not PROTO_VERSION, `type` is unknown, `payload_len` is larger than the bytes received, or `payload_len` is not the exact size for the type (CMD: 1..240). Bytes after the payload are ignored. Accepted frames are remembered by (src_id, seq) in a 16-entry ring shared by all senders; a repeat in that window is dropped. Senders start `seq` at a random value on boot so a quick reboot is not taken for a repeat.
+
 ## Capability bits
 
 `DISPLAY=1<<0, IMU=1<<1, TEMP=1<<2, LIGHT=1<<3`
