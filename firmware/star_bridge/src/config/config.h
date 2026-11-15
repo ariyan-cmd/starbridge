@@ -22,6 +22,15 @@
 #define I2C_CLOCK_HZ 400000UL  // I2C clock passed to the display constructor. Used by hal/display.
 #endif
 
+// Name until one is set at runtime: NODE_NAME_DEFAULT if local_config.h defines it (1..16 chars),
+// else "<NODE_NAME_PREFIX>-<chip ID hex>" so every node is distinct out of the box. Used by identity.
+#ifndef NODE_NAME_PREFIX
+#define NODE_NAME_PREFIX "star"  // 1..9 chars, so "-" and all 6 chip-ID hex digits fit in 16: "star-fcf9a8".
+#endif
+#ifndef SENSOR_CAPS
+#define SENSOR_CAPS 0  // Fitted sensors I2C cannot detect: CAP_TEMP and/or CAP_LIGHT (net/protocol.h). Used by identity.
+#endif
+
 #define PROTO_VERSION 1  // Wire format version, see docs/protocol.md. Used by net.
 #ifndef BEAT_INTERVAL_MS
 #define BEAT_INTERVAL_MS 3000  // Heartbeat period, a guess (untested). Used by peers.

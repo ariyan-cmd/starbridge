@@ -8,6 +8,7 @@
 #include "src/hal/imu.h"
 #include "src/gestures/gestures.h"
 #include "src/face/face.h"
+#include "src/identity/identity.h"
 
 // TEMPORARY gesture preview (#8): print each event so thresholds can be tuned by hand. Replaced by events (#12).
 static void onGesture(GestureCode c, int16_t arg) {
@@ -54,9 +55,13 @@ void setup() {
     haltBlink();
   }
   faceInit();
+  uint32_t idStart = millis();
+  identityInit();
+  Serial.printf("node %08X \"%s\" caps 0x%04X, identityInit %lu ms\n",
+                nodeId(), nodeName(), caps(), (unsigned long)(millis() - idStart));
   if (!imuInit()) Serial.printf("IMU init failed: WHO_AM_I=0x%02X (want 0x68), check wiring and MPU_I2C_ADDR\n", imuWhoAmI());
   gesturesBegin(onGesture);
-  Serial.printf("free heap: %u bytes\n", ESP.getFreeHeap());
+  Serial.printf("free heap: %u bytes, boot %lu ms\n", ESP.getFreeHeap(), millis());
   presetStart = lastFrame = millis();
 }
 
@@ -77,6 +82,20 @@ void loop() {
   }
 
   gesturesUpdate(now);
+
+  static String line;  // TEMPORARY rename check (#9) until the console (#13): "name <new name>"
+  while (Serial.available()) {  // non-blocking: readStringUntil would stall the face for up to 1 s
+    char ch = Serial.read();
+    if (ch != '\n') { if (line.length() < 64) line += ch; continue; }
+    line.trim();
+    if (line.startsWith("name ")) {
+      String arg = line.substring(5);
+      arg.trim();
+      bool ok = arg == "-" ? resetNodeName() : setNodeName(arg.c_str());  // "name -" forgets the saved name
+      Serial.printf("set name %s: now \"%s\"\n", ok ? "ok" : "rejected (1..16 printable chars)", nodeName());
+    }
+    line = "";
+  }
 
   static uint32_t lastImu, imuStart;  // TEMPORARY IMU check (#7): min/max every loop (~30 Hz), print at 5 Hz, min/max per axis every 10 s
   static float mn[3] = {99, 99, 99}, mx[3] = {-99, -99, -99};
