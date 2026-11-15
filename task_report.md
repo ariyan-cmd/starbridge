@@ -47,6 +47,7 @@ Entry rules:
 
 | Date | What | Setup | Value |
 |------|------|-------|-------|
+| 2026-11-15 | Boot with the splash on hardware (D-023) | First node (NodeMCU ESP8266MOD, SSD1306 + MPU6050, 400 kHz), branch `splash-screen` (on top of `issue-10-peers`; same splash code as `issue-24-splash`), single node | `splash 5077 ms` (77 ms over the 5000 ms timeline: last frame and the final clear; no hold, init finished inside the warp). `identityInit` 4 ms, `transportInit` 105 ms. Free heap 44536 bytes. Boot 5487 ms (was 541 ms in #6, so +4946 ms, almost all splash). Fps during the splash and whether the `transportInit` hitch is visible: not reported, pending |
 | 2026-11-15 | Build size with the splash | `arduino-cli compile --warnings all`, board `esp8266:esp8266:nodemcuv2`, branch `issue-24-splash` on `main` (no peers) | RAM 34068 / 80192 bytes (42%, +664 vs the #6 build 33404), flash 276028 (26%, +3920), IRAM 60943 (92%, unchanged). No warnings. Splash ms on hardware, hold time, fps during the splash, visible hitch at `transportInit`: pending |
 | 2026-11-15 | Build size with transport and link check (#6) | `arduino-cli compile -b esp8266:esp8266:nodemcuv2 --warnings all`, core 3.1.2, arduino-cli 1.6.0 | Compiles, no warnings. RAM 33404 / 80192 bytes (41%, +2440 vs the 30964 gestures merge build: queue 2008, codec 100, Wi-Fi/ESP-NOW glue the rest), flash 272108 / 1048576 (25%, +6120, after review fixes), IRAM 60943 (92%, unchanged) |
 | 2026-11-15 | Single-node boot with transport (#6) | First node (NodeMCU ESP8266MOD, SSD1306 + MPU6050, 400 kHz), sketch on `issue-6-espnow-transport`, no second board | `ESP-NOW up on channel 1`, `transportInit` 106 ms. Node 00FCF9A8, default name "star-fcf9a8" (confirms the D-020 format on hardware), caps 0x0003, `identityInit` 4 ms. Free heap 45560 bytes (3040 less than the 48600 identity boot: Wi-Fi/ESP-NOW heap). Boot 541 ms (+107 vs 434, almost all `transportInit`) |
@@ -97,7 +98,7 @@ Entry rules:
 
 ## Open items
 
-- Splash (D-023): flash and record the `splash .. ms` Serial line, fps during the splash, and whether the `transportInit` hitch is visible.
+- Splash (D-023): fps during the splash and whether the `transportInit` hitch is visible are pending (boot time is logged).
 - #6: two-board exchange on hardware pending (see Numbers). RSSI per frame not captured (ESP8266 callback has none, D-021).
 - #8: thresholds in `config.h` are placeholders. Needed by hand with the board: each gesture triggers reliably, nothing fires at rest, then final values and false-trigger rate recorded here. Tap detection at 30 Hz sampling is the main risk. Hand-test with `firmware/bringup/gesture_face/gesture_face.ino`, a single-file sketch that calibrates for 10 s at power-up (rest vector becomes up, x/y rebuilt around it; restarts if the board moves more than 0.15 g, a placeholder) and then runs the face from gestures only. It is standalone because an Arduino build copies the sketch folder and cannot reach `src/` from a sibling folder. Calibration lives only in that test for now; moving it into `gestures` is pending.
 - #7: `imuReadGyro` (+-500 deg/s, 65.5 LSB per deg/s) is not run on hardware yet: pending.
