@@ -6,7 +6,14 @@
 #include "src/config/config.h"
 #include "src/hal/display.h"
 #include "src/hal/imu.h"
+#include "src/gestures/gestures.h"
 #include "src/face/face.h"
+
+// TEMPORARY gesture preview (#8): print each event so thresholds can be tuned by hand. Replaced by events (#12).
+static void onGesture(GestureCode c, int16_t arg) {
+  static const char *names[] = {"?", "SHAKE", "TAP", "TILT", "PICKUP", "FACE_DOWN", "FREEFALL"};
+  Serial.printf("GESTURE %s arg=%d t=%lu\n", names[c], arg, (unsigned long)millis());
+}
 
 static void haltBlink() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -48,6 +55,7 @@ void setup() {
   }
   faceInit();
   if (!imuInit()) Serial.printf("IMU init failed: WHO_AM_I=0x%02X (want 0x68), check wiring and MPU_I2C_ADDR\n", imuWhoAmI());
+  gesturesBegin(onGesture);
   Serial.printf("free heap: %u bytes\n", ESP.getFreeHeap());
   presetStart = lastFrame = millis();
 }
@@ -67,6 +75,8 @@ void loop() {
     presetStart = now; frames = renderUs = flushUs = 0;
     if (idx == 0) Serial.printf("free heap: %u bytes\n", ESP.getFreeHeap());
   }
+
+  gesturesUpdate(now);
 
   static uint32_t lastImu, imuStart;  // TEMPORARY IMU check (#7): min/max every loop (~30 Hz), print at 5 Hz, min/max per axis every 10 s
   static float mn[3] = {99, 99, 99}, mx[3] = {-99, -99, -99};
