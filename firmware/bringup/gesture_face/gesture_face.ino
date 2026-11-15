@@ -559,7 +559,7 @@ static void gfOnGesture(GestureCode c, int16_t arg) {
   Serial.printf("GESTURE %s arg=%d t=%lu\n", names[c], arg, (unsigned long)millis());
   switch (c) {
     case GESTURE_TILT:
-      tiltGx = arg == TILT_PLUS_X ? 1 : arg == TILT_MINUS_X ? -1 : 0;
+      tiltGx = arg == TILT_PLUS_X ? -1 : arg == TILT_MINUS_X ? 1 : 0;  // flipped after hand test: left/right were reversed
       tiltGy = arg == TILT_PLUS_Y ? 1 : arg == TILT_MINUS_Y ? -1 : 0;
       if (mood == ASLEEP) setMood(IDLE, 0);
       break;
