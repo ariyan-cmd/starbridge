@@ -1,0 +1,15 @@
+# Arduino / build output
+build/
+*.elf
+*.bin
+*.hex
+*.map
+
+# Editor and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local secrets and per-node config
+firmware/star_bridge/src/config/local_config.h
