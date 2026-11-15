@@ -73,13 +73,18 @@ void loop() {
     if (idx == 0) Serial.printf("free heap: %u bytes\n", ESP.getFreeHeap());
   }
 
-  if (Serial.available()) {  // TEMPORARY rename check (#9) until the console (#13): "name <new name>"
-    String line = Serial.readStringUntil('\n');
+  static String line;  // TEMPORARY rename check (#9) until the console (#13): "name <new name>"
+  while (Serial.available()) {  // non-blocking: readStringUntil would stall the face for up to 1 s
+    char ch = Serial.read();
+    if (ch != '\n') { if (line.length() < 64) line += ch; continue; }
     line.trim();
     if (line.startsWith("name ")) {
-      bool ok = setNodeName(line.c_str() + 5);
+      String arg = line.substring(5);
+      arg.trim();
+      bool ok = setNodeName(arg.c_str());
       Serial.printf("set name %s: now \"%s\"\n", ok ? "ok" : "rejected (1..16 printable chars)", nodeName());
     }
+    line = "";
   }
 
   static uint32_t lastImu, imuStart;  // TEMPORARY IMU check (#7): min/max every loop (~30 Hz), print at 5 Hz, min/max per axis every 10 s
