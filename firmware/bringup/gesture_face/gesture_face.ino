@@ -5,6 +5,11 @@
   Libraries (Library Manager): "Adafruit SSD1306" and "Adafruit GFX Library"
   Wiring  : OLED and MPU6050 both on 3V3, GND, SDA -> D2, SCL -> D1 (MPU6050 AD0 -> GND)
 
+  On every power-up it calibrates for 10 s ("CALIBRATE" on screen): leave the board still, resting the way it will
+  normally sit. The average gravity reading becomes "up" (z = +1.00 g exactly, so the +0.07 g offset seen on the
+  bench is removed), and x and y are rebuilt from the sensor's x axis around it, so tilts, face-down and the rest
+  are all relative to the surface it was on. If it is moved during calibration, the 10 s restart ("HOLD STILL").
+
   Idle blink runs on its own. Everything else is driven ONLY by accelerometer gestures:
 
     TILT +x/-x/+y/-y  eyes look that way (levelled again: eyes return to centre)
@@ -16,7 +21,8 @@
 
   Every event is also printed on Serial. All thresholds are in the GESTURE_* defines below.
   If a tilt looks at the wrong side, swap the signs in gfOnGesture().
-  Generated from firmware/star_bridge/src (config, display, imu, face, gestures); edit those, not this copy.
+  The modules below are copied from firmware/star_bridge/src (config, display, imu, face, gestures); the calibration
+  and test sections at the bottom exist only here.
 */
 #include <Wire.h>
 #include <math.h>
@@ -470,6 +476,76 @@ static void haltBlink() {
 }
 static void ease(float &v, float target, float rate, float dt) { v += (target - v) * (1 - expf(-rate * dt)); }
 
+// ---- calibration: rest vector -> "up", sensor axes -> relative axes ----
+static const uint32_t CAL_MS = 10000;
+static const float CAL_MAX_SPREAD_G = 0.15f;  // any axis moving more than this restarts the 10 s (placeholder)
+static float calR[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+static float calG = 1.0f;                     // measured |g| at rest, divided out so rest reads 1.000 g
+
+static void applyCal(float &x, float &y, float &z) {
+  float a = x, b = y, c = z;
+  x = (calR[0][0] * a + calR[0][1] * b + calR[0][2] * c) / calG;
+  y = (calR[1][0] * a + calR[1][1] * b + calR[1][2] * c) / calG;
+  z = (calR[2][0] * a + calR[2][1] * b + calR[2][2] * c) / calG;
+}
+
+static void showText(const char *big, const char *small) {
+  Adafruit_GFX &d = displayGfx();
+  displayClear();
+  d.setTextColor(1);
+  d.setTextSize(2); d.setCursor(4, 12); d.print(big);
+  d.setTextSize(1); d.setCursor(4, 44); d.print(small);
+  displayFlush();
+}
+
+static void calibrate() {
+  float sum[3] = {0, 0, 0}, mn[3], mx[3], spread = 0;
+  uint32_t n = 0, start = millis(), lastDraw = 0, movedAt = 0;
+  for (int i = 0; i < 3; i++) { mn[i] = 99; mx[i] = -99; }
+  while (millis() - start < CAL_MS) {
+    float a[3];
+    if (imuRead(a[0], a[1], a[2])) {
+      spread = 0;
+      n++;
+      for (int i = 0; i < 3; i++) { sum[i] += a[i]; mn[i] = min(mn[i], a[i]); mx[i] = max(mx[i], a[i]); spread = max(spread, mx[i] - mn[i]); }
+      if (spread > CAL_MAX_SPREAD_G) {                  // moved: start over
+        for (int i = 0; i < 3; i++) { sum[i] = 0; mn[i] = 99; mx[i] = -99; }
+        n = 0; start = movedAt = millis();
+      }
+    }
+    if (millis() - lastDraw >= 200) {
+      lastDraw = millis();
+      char buf[24];
+      snprintf(buf, sizeof buf, "keep still %us", (unsigned)((CAL_MS - (millis() - start) + 999) / 1000));
+      showText(movedAt && millis() - movedAt < 1500 ? "HOLD STILL" : "CALIBRATE", buf);
+    }
+    delay(5);
+  }
+  float m = 0, u[3];
+  if (n) { for (int i = 0; i < 3; i++) { u[i] = sum[i] / n; m += u[i] * u[i]; } m = sqrtf(m); }
+  if (!n || m < 0.5f) {                                 // no usable reading: keep the sensor's own axes
+    Serial.println(F("Calibration failed: no valid rest reading, using raw axes"));
+    showText("CAL FAILED", "using raw axes");
+    delay(1500);
+    return;
+  }
+  for (int i = 0; i < 3; i++) u[i] /= m;                // unit "up" in sensor axes
+  // x' = sensor x with the "up" part removed (sensor y if x is almost parallel to up); z' = up; y' = z' cross x'
+  float ex[3] = {1, 0, 0};
+  if (fabsf(u[0]) > 0.9f) { ex[0] = 0; ex[1] = 1; }
+  float d = ex[0] * u[0] + ex[1] * u[1] + ex[2] * u[2], x[3], xn = 0;
+  for (int i = 0; i < 3; i++) { x[i] = ex[i] - d * u[i]; xn += x[i] * x[i]; }
+  xn = sqrtf(xn);
+  for (int i = 0; i < 3; i++) x[i] /= xn;
+  float y[3] = {u[1] * x[2] - u[2] * x[1], u[2] * x[0] - u[0] * x[2], u[0] * x[1] - u[1] * x[0]};
+  for (int i = 0; i < 3; i++) { calR[0][i] = x[i]; calR[1][i] = y[i]; calR[2][i] = u[i]; }
+  calG = m;
+  Serial.printf("Calibrated: rest g = %+.3f %+.3f %+.3f, |g| = %.3f, spread %.3f g, %lu samples\n",
+                u[0] * m, u[1] * m, u[2] * m, m, spread, (unsigned long)n);
+  showText("CALIBRATED", "starting...");
+  delay(800);
+}
+
 static Mood mood = IDLE;
 static uint32_t moodUntil;          // 0 = no timeout
 static float tiltGx, tiltGy;        // gaze from the last TILT
@@ -502,6 +578,7 @@ void setup() {
   if (!displayInit()) { Serial.println(F("Display init failed")); haltBlink(); }
   faceInit();
   if (!imuInit()) { Serial.printf("IMU init failed: WHO_AM_I=0x%02X (want 0x68)\n", imuWhoAmI()); haltBlink(); }
+  calibrate();
   gesturesBegin(gfOnGesture);
   gfLast = millis();
 }
@@ -511,7 +588,8 @@ void loop() {
   float dt = (now - gfLast) / 1000.0f;
   gfLast = now;
 
-  gesturesUpdate(now);
+  float ax, ay, az;
+  if (imuRead(ax, ay, az)) { applyCal(ax, ay, az); gesturesFeed(ax, ay, az, now); }
   if (moodUntil && now >= moodUntil) setMood(IDLE, 0);
 
   float lt = 0, sl = 0, lb = 0, gx = tiltGx, gy = tiltGy, scale = 1.0f;

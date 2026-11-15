@@ -44,14 +44,7 @@ static uint32_t presetStart, lastFrame, renderUs, flushUs, frames;
 
 static void ease(float &v, float target, float rate, float dt) { v += (target - v) * (1 - expf(-rate * dt)); }
 
-#ifdef GESTURE_FACE_TEST
-#include "gesture_face_test.h"
-#endif
-
 void setup() {
-#ifdef GESTURE_FACE_TEST
-  gestureFaceSetup(); return;
-#endif
   Serial.begin(115200);
   delay(300);
   Serial.printf("\nStar-Bridge proto v%d, screen %dx%d, I2C %lu Hz\n",
@@ -68,9 +61,6 @@ void setup() {
 }
 
 void loop() {
-#ifdef GESTURE_FACE_TEST
-  gestureFaceLoop(); return;
-#endif
   uint32_t now = millis();
   float dt = (now - lastFrame) / 1000.0f;
   lastFrame = now;
