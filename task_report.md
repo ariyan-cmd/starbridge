@@ -65,6 +65,7 @@ Entry rules:
 
 ## Open items
 
+- #7: `imuReadGyro` (+-500 deg/s, 65.5 LSB per deg/s) is not run on hardware yet: pending. The 10 s min/max rows above were taken at 5 Hz sampling, so the spread is a lower bound; re-measure at ~30 Hz (sketch now samples every loop): pending.
 - Face renderer (#4) runs on hardware (numbers logged). Visual review pending: Ariyan to say how each preset looks. Ariyan to upload and paste Serial: per-preset fps, render us, flush us, free heap. Also note what looks wrong on screen (ring thickness, star shape, lids, bridge arch).
 - hal/display (#3) ran on hardware as part of the face preview: flush 26.2 ms at the default clock.
 - Gesture thresholds in `config.h` (shake 2.0 g, tap 1.8 g, freefall 0.3 g) are placeholders: pending measurement.
