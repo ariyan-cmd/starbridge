@@ -45,6 +45,10 @@
 #ifndef MISSED_BEAT_LIMIT
 #define MISSED_BEAT_LIMIT 3  // Beats missed before a peer is dropped, a guess. Used by peers.
 #endif
+#ifndef PEER_TABLE_LEN
+#define PEER_TABLE_LEN 8  // Peers remembered (32 B each). A new peer is ignored while the table is full. Used by peers.
+#endif
+#define FW_VERSION 1  // Firmware version sent in HELLO. Bump on a release. Used by the sketch.
 
 // Gesture thresholds in g. PLACEHOLDERS, not measured yet (task_report: pending). Used by gestures.
 #ifndef GESTURE_SHAKE_G
