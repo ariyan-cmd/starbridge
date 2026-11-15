@@ -4,5 +4,6 @@
 
 bool imuInit();                                 // Wake, set +-4 g / 100 Hz. False if absent or WHO_AM_I is not 0x68.
 uint8_t imuWhoAmI();                            // Last WHO_AM_I value read (0 if the chip did not answer). For diagnostics.
+uint32_t imuResets();                           // Times the chip was found reset (read exactly 0,0,0) and re-configured.
 bool imuRead(float &ax, float &ay, float &az);  // g. False on I2C failure (outputs untouched).
 bool imuReadGyro(float &gx, float &gy, float &gz);  // deg/s (+-500 range). False on I2C failure.

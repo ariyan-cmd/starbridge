@@ -6,8 +6,15 @@
 #include "src/config/config.h"
 #include "src/hal/display.h"
 #include "src/hal/imu.h"
+#include "src/gestures/gestures.h"
 #include "src/face/face.h"
 #include "src/identity/identity.h"
+
+// TEMPORARY gesture preview (#8): print each event so thresholds can be tuned by hand. Replaced by events (#12).
+static void onGesture(GestureCode c, int16_t arg) {
+  static const char *names[] = {"?", "SHAKE", "TAP", "TILT", "PICKUP", "FACE_DOWN", "FREEFALL"};
+  Serial.printf("GESTURE %s arg=%d t=%lu\n", names[c], arg, (unsigned long)millis());
+}
 
 static void haltBlink() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -53,6 +60,7 @@ void setup() {
   Serial.printf("node %08X \"%s\" caps 0x%04X, identityInit %lu ms\n",
                 nodeId(), nodeName(), caps(), (unsigned long)(millis() - idStart));
   if (!imuInit()) Serial.printf("IMU init failed: WHO_AM_I=0x%02X (want 0x68), check wiring and MPU_I2C_ADDR\n", imuWhoAmI());
+  gesturesBegin(onGesture);
   Serial.printf("free heap: %u bytes, boot %lu ms\n", ESP.getFreeHeap(), millis());
   presetStart = lastFrame = millis();
 }
@@ -72,6 +80,8 @@ void loop() {
     presetStart = now; frames = renderUs = flushUs = 0;
     if (idx == 0) Serial.printf("free heap: %u bytes\n", ESP.getFreeHeap());
   }
+
+  gesturesUpdate(now);
 
   static String line;  // TEMPORARY rename check (#9) until the console (#13): "name <new name>"
   while (Serial.available()) {  // non-blocking: readStringUntil would stall the face for up to 1 s

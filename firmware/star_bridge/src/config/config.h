@@ -47,5 +47,61 @@
 #define GESTURE_TAP_G 1.8f  // Short spike for a tap.
 #endif
 #ifndef GESTURE_FREEFALL_G
-#define GESTURE_FREEFALL_G 0.3f  // |a| below this means freefall.
+#define GESTURE_FREEFALL_G 0.5f  // |a| below this means freefall (was 0.3, never fired by hand; a cable also drags the board).
+#endif
+
+// Detector timing and extra thresholds (#8). PLACEHOLDERS until tuned by hand: see task_report.md. Used by gestures.
+#ifndef GESTURE_SHAKE_PEAKS
+#define GESTURE_SHAKE_PEAKS 3  // Peaks over GESTURE_SHAKE_G needed...
+#endif
+#ifndef GESTURE_SHAKE_WINDOW_MS
+#define GESTURE_SHAKE_WINDOW_MS 1000  // ...inside this window.
+#endif
+#ifndef GESTURE_SHAKE_LOCK_MS
+#define GESTURE_SHAKE_LOCK_MS 1500  // Debounce after a shake.
+#endif
+#ifndef GESTURE_TAP_MAX_MS
+#define GESTURE_TAP_MAX_MS 80  // A spike longer than this is not a tap.
+#endif
+#ifndef GESTURE_TAP_LOCK_MS
+#define GESTURE_TAP_LOCK_MS 200
+#endif
+#ifndef GESTURE_TAP_QUIET_MS
+#define GESTURE_TAP_QUIET_MS 500  // A pickup or shake jerk looks like weak taps; ignore taps this long after one.
+#endif
+#ifndef GESTURE_FREEFALL_MIN_MS
+#define GESTURE_FREEFALL_MIN_MS 30  // |a| under GESTURE_FREEFALL_G for 2 samples (about 67 ms). Measured dips: 1 to 2 samples.
+#endif
+#ifndef GESTURE_FREEFALL_LOCK_MS
+#define GESTURE_FREEFALL_LOCK_MS 1000
+#endif
+#ifndef GESTURE_TILT_G
+#define GESTURE_TILT_G 0.35f  // x or y component beyond this (face up) is a tilt.
+#endif
+#ifndef GESTURE_TILT_HOLD_MS
+#define GESTURE_TILT_HOLD_MS 150  // Direction must hold this long before it fires.
+#endif
+#ifndef GESTURE_REST_DEV_G
+#define GESTURE_REST_DEV_G 0.12f  // | |a| - 1 | under this counts as at rest (measured resting spread up to 0.08 g).
+#endif
+#ifndef GESTURE_REST_MS
+#define GESTURE_REST_MS 800  // Rest needed before a pickup can fire.
+#endif
+#ifndef GESTURE_REST_DEV_GRACE_MS
+#define GESTURE_REST_DEV_GRACE_MS 500  // A pickup must start within this long of the last rest sample.
+#endif
+#ifndef GESTURE_PICKUP_DEV_G
+#define GESTURE_PICKUP_DEV_G 0.2f  // | |a| - 1 | beyond this after rest starts a pickup.
+#endif
+#ifndef GESTURE_PICKUP_MIN_MS
+#define GESTURE_PICKUP_MIN_MS 60  // ...and must last this long (a tap is shorter).
+#endif
+#ifndef GESTURE_PICKUP_LOCK_MS
+#define GESTURE_PICKUP_LOCK_MS 1000
+#endif
+#ifndef GESTURE_FACE_DOWN_Z
+#define GESTURE_FACE_DOWN_Z -0.8f  // z below this means face down.
+#endif
+#ifndef GESTURE_FACE_DOWN_MS
+#define GESTURE_FACE_DOWN_MS 500
 #endif
