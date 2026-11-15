@@ -40,6 +40,7 @@ Entry rules:
 
 | Date | What | Setup | Value |
 |------|------|-------|-------|
+| 2026-11-15 | Review of #5 (`/code-review` high) | 5 findings | Fixed: parse copies the payload with `memmove` so in-place parse (frame aliasing out) is defined; receiver rules added to `docs/protocol.md`; `test/` added to the README layout. Left: `codecInit` random seed is wired in #16; host test has no runner script or CI |
 | 2026-11-15 | Codec host test (#5) | `test/codec_test.cpp`, `g++ -std=c++11 -Wall -Wextra` (Apple clang, arm64 macOS) | All checks pass, no warnings. Covers build fields + seq wrap, round-trip, truncated, wrong version, unknown type, wrong size per type, duplicates, ring eviction |
 | 2026-11-15 | Codec static RAM (#5) | Symbol addresses in the host `codec.o` (arm64 clang); ESP8266 build not run, no arduino-cli or ESP core on this Mac | Dedupe table 96 B (seenSrc 64 + seenSeq 32), plus 4 B counters (nextSeq 2, seenNext 1, seenCount 1) = 100 B .bss. ESP8266 compile and its RAM figure: pending |
 | 2026-11-15 | Payload sizes from `net/protocol.h` | `static_assert`, checked by a host `g++ -std=c++11 -fsyntax-only` (Apple clang), not yet built for ESP8266 | Header 10, HELLO 19, BEAT 5, EVENT 3, TELEMETRY 3, CMD 240 max, Packet 250 |

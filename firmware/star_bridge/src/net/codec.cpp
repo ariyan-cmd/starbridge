@@ -61,6 +61,6 @@ ParseResult codecParse(const uint8_t *frame, size_t len, Packet &out) {
   if (seenCount < DEDUPE_SLOTS) seenCount++;
 
   out.hdr = h;
-  memcpy(out.payload, frame + sizeof(Header), h.payload_len);
+  memmove(out.payload, frame + sizeof(Header), h.payload_len);  // frame may alias out
   return PARSE_OK;
 }
