@@ -12,9 +12,14 @@
 #include "src/net/codec.h"
 #include "src/net/transport.h"
 #include "src/peers/peers.h"
+#include "src/events/events.h"
 #include "src/splash/splash.h"
 
-static void onPacket(const Packet &p) { peersOnPacket(p, millis()); }
+static void onPacket(const Packet &p) {
+  uint32_t now = millis();
+  peersOnPacket(p, now);
+  eventsOnPacket(p, now);
+}
 
 static bool netOk;  // skip sending when ESP-NOW did not start
 
@@ -37,12 +42,17 @@ static HelloPayload selfHello() {
 static void onPeerChange(const Peer &p, bool joined) {
   Serial.printf("PEER %s %08X \"%s\" caps 0x%04X fw %u t=%lu (%u peers)\n", joined ? "JOIN" : "LOST", p.id, p.name,
                 p.caps, p.fw_version, (unsigned long)millis(), peerCount());
+  eventsPeerChange(p, joined);
 }
 
-// TEMPORARY gesture preview (#8): print each event so thresholds can be tuned by hand. Replaced by events (#12).
-static void onGesture(GestureCode c, int16_t arg) {
+static void onGesture(GestureCode c, int16_t arg) { eventsLocal(c, arg); }
+
+// TEMPORARY until the face (#11): print local and remote events (peer events are printed by onPeerChange).
+static void onEvent(const Event &e) {
+  if (e.kind != EV_LOCAL && e.kind != EV_REMOTE) return;
   static const char *names[] = {"?", "SHAKE", "TAP", "TILT", "PICKUP", "FACE_DOWN", "FREEFALL"};
-  Serial.printf("GESTURE %s arg=%d t=%lu\n", names[c], arg, (unsigned long)millis());
+  Serial.printf("EVENT %s %08X %s arg=%d t=%lu\n", e.kind == EV_LOCAL ? "LOCAL" : "REMOTE", e.src,
+                e.code < 7 ? names[e.code] : "?", e.arg, (unsigned long)millis());
 }
 
 static void haltBlink() {
@@ -100,6 +110,7 @@ static bool bootStep(uint32_t now) {
       break;
     }
     case 3:
+      eventsBegin(nodeId(), sendMsg, onEvent, nullptr, now);  // nullptr: no temperature sensor yet
       peersBegin(selfHello(), sendMsg, onPeerChange, now);
       Serial.printf("peers: beat %u ms, timeout %lu ms\n", BEAT_INTERVAL_MS, (unsigned long)peerTimeoutMs());
       break;
@@ -107,6 +118,7 @@ static bool bootStep(uint32_t now) {
       gesturesUpdate(now);
       transportPoll();
       peersUpdate(now);
+      eventsUpdate(now);
       return true;
   }
   stage++;
@@ -148,14 +160,15 @@ void loop() {
   gesturesUpdate(now);
   transportPoll();
   peersUpdate(now);
+  eventsUpdate(now);
 
   static uint32_t lastStats;  // TEMPORARY link check (#6): stats every 10 s
   if (now - lastStats >= 10000) {
     lastStats = now;
     TransportStats st = transportStats();
-    Serial.printf("net rx %lu dropped %lu parseErr %lu sendOk %lu sendFail %lu queued %u\n",
+    Serial.printf("net rx %lu dropped %lu parseErr %lu sendOk %lu sendFail %lu queued %u, events dropped %lu\n",
                   (unsigned long)st.rx, (unsigned long)st.rxDropped, (unsigned long)st.parseErr,
-                  (unsigned long)st.sendOk, (unsigned long)st.sendFail, st.queued);
+                  (unsigned long)st.sendOk, (unsigned long)st.sendFail, st.queued, (unsigned long)eventsDropped());
   }
 
   static String line;  // TEMPORARY rename check (#9) until the console (#13): "name <new name>"

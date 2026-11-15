@@ -47,6 +47,12 @@
 #ifndef PEER_TABLE_LEN
 #define PEER_TABLE_LEN 8  // Peers remembered (32 B each). A new peer is ignored while the table is full. Used by peers.
 #endif
+#ifndef EVENT_QUEUE_LEN
+#define EVENT_QUEUE_LEN 8  // Events waiting for the face (8 B each). Newest dropped when full. Used by events.
+#endif
+#ifndef TELEMETRY_INTERVAL_MS
+#define TELEMETRY_INTERVAL_MS 10000  // Temperature broadcast period, a guess. Only sent with a sensor. Used by events.
+#endif
 #define FW_VERSION 1  // Firmware version sent in HELLO. Bump on a release, together with FW_VERSION_STR. Used by the sketch.
 #define FW_VERSION_STR "v0.1.2"  // Version shown on the splash. Used by splash.
 

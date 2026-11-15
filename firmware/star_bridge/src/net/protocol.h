@@ -32,6 +32,11 @@ enum CapBits : uint16_t {
   CAP_LIGHT = 1 << 3,
 };
 
+// TelemetryPayload::sensor_id.
+enum SensorId : uint8_t {
+  SENSOR_TEMP = 1,  // degrees C x100
+};
+
 struct __attribute__((packed)) Header {
   uint8_t version;      // PROTO_VERSION; receivers drop other versions
   uint8_t type;         // MsgType
@@ -56,7 +61,7 @@ struct __attribute__((packed)) BeatPayload {
 };
 
 struct __attribute__((packed)) EventPayload {
-  uint8_t code;
+  uint8_t code;  // same values as GestureCode (gestures/gestures.h), see docs/protocol.md
   int16_t arg;
 };
 
