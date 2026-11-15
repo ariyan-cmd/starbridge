@@ -31,7 +31,6 @@ Star_bridge/
       src/<module>/README.md   config hal identity gestures face net peers events console
     bringup/oled_test/oled_test.ino   display test, verified on hardware
   tools/
-    create_issues.sh        makes the 16 GitHub issues (see section 8)
     hooks/commit-msg        strips Co-Authored-By and Claude-Session lines
   starbridge.bundle         git bundle of the commits, see section 4
 ```
@@ -94,13 +93,7 @@ Protocol envelope (draft, `PROTO_VERSION` 1): version u8, type u8, src_id u32, s
 - Ariyan (device): #1 config, #3 hal/display, #4 face renderer, #7 hal/imu MPU6050, #8 gestures, #11 face state machine and synchronized blink, #13 status screen, #15 tuning numbers.
 - Saad (network): #2 protocol.h, #5 codec with PC-side test, #6 ESP-NOW transport, #9 identity, #10 peers, #12 events, #14 console, #16 integration and the shake demo.
 
-The issues do not exist on GitHub yet. Run, from a terminal where `gh` is logged in as the user, after the push:
-
-```
-SAAD_LOGIN=<saad-github-username> bash tools/create_issues.sh
-```
-
-(`DRY_RUN=1` prints the plan.) It refuses to run if the repo already has issues, because bodies refer to #1 to #16. Saad must be a collaborator or the assignment fails. If Claude Code has GitHub access, it can run this itself once the username is known.
+The 16 issues were created on 2026-11-15 (Ariyan `ariyan-cmd`, Saad `saad-mh`) and the creation script was then removed.
 
 ## 9. Face design decisions (from the design discussion)
 
@@ -171,4 +164,3 @@ The design reasoning the user asked for ("think like a pro designer, psychology,
 - ESP-NOW on the ESP8266 uses different roles and callback signatures from ESP32. Never do work (parsing, printing) inside the receive callback; queue the frame and handle it in `loop()`.
 - `LED_BUILTIN` on NodeMCU is active low.
 - ESP8266 has about 80 KB RAM: no heap allocation in the event queue, peer table or dedupe table.
-- `tools/create_issues.sh` is bash. On Windows run it from Git Bash.

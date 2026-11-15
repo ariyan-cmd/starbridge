@@ -5,7 +5,7 @@ Two people, one contract. The line between the halves is the wire format in `doc
 - **Ariyan: device side.** Display, face, MPU6050, gestures.
 - **Saad: network side.** Protocol, ESP-NOW, identity, peers, events, console, integration test.
 
-Issues are created by `tools/create_issues.sh` (8 each). Numbers below are the issue numbers on a fresh repo.
+Issues were created on 2026-11-15 (8 each). Numbers below are the GitHub issue numbers.
 
 | # | Issue | Owner | Depends on |
 |---|-------|-------|------------|
