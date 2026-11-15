@@ -11,6 +11,7 @@ Entry rules:
 
 | ID | Date | Decision | Why | Alternatives | Cost |
 |----|------|----------|-----|--------------|------|
+| D-008 | 2026-11-15 | No `Co-Authored-By` or `Claude-Session` trailers on commits or PRs. Existing 7 local commits rewritten to remove them | Owner's choice for how history reads | Keep default attribution | Commit hashes changed once, before the first push (the bundle was regenerated). No machine-readable record of which commits Claude wrote. A `commit-msg` hook in `tools/hooks/` enforces it, but it needs `git config core.hooksPath tools/hooks` in each clone |
 | D-007 | 2026-11-15 | Public GitHub repo `starbridge` | Share and back up the work | Private repo | Everything committed is public. No secrets, Wi-Fi passwords or keys in the tree (`local_config.h` is git-ignored) |
 | D-006 | 2026-11-15 | Face is eyes only, parametric (rounded rects plus lid cuts), no mouth, no bitmaps | Eyes carry most of the readable emotion, cheap to draw, easy to interpolate between states | Full face, bitmap expressions, outline-only eyes | No lip shapes. Expressions limited to what lids, gaze and size can say |
 | D-005 | 2026-11-15 | Parts confirmed: ESP8266MOD NodeMCU, MPU6050 (0x68) | Hardware on the desk | ESP32 | ESP8266 has about 80 KB RAM and a different ESP-NOW API from ESP32. MPU6050 has no magnetometer, so no compass heading |
