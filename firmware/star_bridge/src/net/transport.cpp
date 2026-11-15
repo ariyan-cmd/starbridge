@@ -7,8 +7,11 @@
 #include "codec.h"
 #include "frame_queue.h"
 
+static_assert(ESPNOW_CHANNEL >= 1 && ESPNOW_CHANNEL <= 13, "ESPNOW_CHANNEL must be 1..13");
+
 static FrameQueue<RX_QUEUE_LEN> rxQueue;
 static PacketHandler handler;
+// ESP8266 SDK callbacks run in the sys task, which never preempts loop(), so plain increments are safe.
 static volatile uint32_t rxCount, sendOk, sendFail;
 static uint32_t parseErr;
 static uint8_t broadcastMac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -35,7 +38,11 @@ bool transportInit(PacketHandler onPacket) {
   esp_now_set_self_role(ESP_NOW_ROLE_COMBO);  // send and receive
   esp_now_register_recv_cb(onRecv);
   esp_now_register_send_cb(onSent);
-  return esp_now_add_peer(broadcastMac, ESP_NOW_ROLE_COMBO, ESPNOW_CHANNEL, nullptr, 0) == 0;
+  if (esp_now_add_peer(broadcastMac, ESP_NOW_ROLE_COMBO, ESPNOW_CHANNEL, nullptr, 0) != 0) {
+    esp_now_deinit();  // leave nothing half set up, so a retry starts clean
+    return false;
+  }
+  return true;
 }
 
 bool transportSend(const void *frame, uint8_t len) {

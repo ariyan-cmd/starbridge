@@ -24,6 +24,8 @@ static void onGesture(GestureCode c, int16_t arg) {
   Serial.printf("GESTURE %s arg=%d t=%lu\n", names[c], arg, (unsigned long)millis());
 }
 
+static bool netOk;  // TEMPORARY link check (#6): skip sending when ESP-NOW did not start
+
 static void haltBlink() {
   pinMode(LED_BUILTIN, OUTPUT);
   for (;;) {  // fast blink = display not found (LED is active low)
@@ -71,7 +73,7 @@ void setup() {
   gesturesBegin(onGesture);
   codecInit(ESP.random());  // random first seq, see D-016
   uint32_t netStart = millis();
-  bool netOk = transportInit(onPacket);
+  netOk = transportInit(onPacket);
   Serial.printf("ESP-NOW %s on channel %d, transportInit %lu ms\n", netOk ? "up" : "FAILED", ESPNOW_CHANNEL,
                 (unsigned long)(millis() - netStart));
   Serial.printf("free heap: %u bytes, boot %lu ms\n", ESP.getFreeHeap(), millis());
@@ -98,7 +100,7 @@ void loop() {
   transportPoll();
 
   static uint32_t lastTx, lastStats;  // TEMPORARY link check (#6): BEAT every 2 s, stats every 10 s
-  if (now - lastTx >= 2000) {
+  if (netOk && now - lastTx >= 2000) {
     lastTx = now;
     Packet out;
     BeatPayload b = {now / 1000, 0};
