@@ -58,15 +58,16 @@ Entry rules:
 | 2026-11-15 | Frame budget at 38.08 fps | v0.1 face animation target of 30 fps | 38.08 fps clears 30 fps at 400 kHz. Cost: a full redraw uses about 26 ms per frame, leaving little of a 33 ms frame for gestures and networking in the same loop. Budget is tight, so avoid full-screen redraws every loop where possible |
 | 2026-11-15 | Max payload | Header 10 bytes, ESP-NOW frame 250 bytes | 240 bytes |
 | 2026-11-15 | Display framebuffer | 128 x 64 / 8 | 1024 bytes |
-| 2026-11-15 | MPU6050 I2C address | AD0 low assumed | 0x68 (confirm the AD0 pin level on the module) |
+| 2026-11-15 | MPU6050 I2C address | Boot I2C scan with OLED and MPU6050 on the shared bus | Devices at 0x3C and 0x68. WHO_AM_I check passed (0x68). AD0 is low |
 | 2026-11-15 | Build size with hal/imu and the IMU check in the sketch | `arduino-cli compile`, board `esp8266:esp8266:nodemcuv2`, core 3.1.2 | RAM 30520 / 80192 bytes (38%), flash 261044 / 1048576 bytes (24%), IRAM 60943 (92%). Compiles. Runtime values (g at rest, flipped signs, 10 s min/max per axis, WHO_AM_I, address): pending hardware run |
+| 2026-11-15 | MPU6050 at rest, board flat, +-4 g | 5 Serial samples at 5 Hz, no calibration | x +0.035 to +0.040, y -0.011 to -0.015, z +1.063 to +1.070 g. Z is about 0.07 g high and x/y are off zero by up to 0.04 g (offsets, my reading of the samples). 10 s min/max and flipped-board signs: pending |
 
 ## Open items
 
+- #7: still need the 10 s min/max line (board still) and the signs with the board turned over.
 - Face renderer (#4) runs on hardware (numbers logged). Visual review pending: Ariyan to say how each preset looks. Ariyan to upload and paste Serial: per-preset fps, render us, flush us, free heap. Also note what looks wrong on screen (ring thickness, star shape, lids, bridge arch).
 - hal/display (#3) ran on hardware as part of the face preview: flush 26.2 ms at the default clock.
 - Gesture thresholds in `config.h` (shake 2.0 g, tap 1.8 g, freefall 0.3 g) are placeholders: pending measurement.
 - Re-run the speed test at I2C_CLOCK_HZ = 800000UL and 1000000UL (one upload each) and record fps plus whether the screen garbles.
-- Confirm the MPU6050 address by running the I2C scan with it attached.
 - Are any DHT or LDR sensors fitted? Needed for the temperature telemetry in plan item 5.
 - Peer timeout: beat interval and missed-beat limit are guesses (3 s, 3 misses) until tested.

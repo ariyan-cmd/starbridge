@@ -17,11 +17,11 @@ Display and accelerometer share the same I2C bus (different addresses).
 
 ## Verified
 
+- MPU6050 answers at 0x68 (AD0 low), WHO_AM_I = 0x68, shares the bus with the OLED at 0x3C (2026-11-15, I2C scan).
 - Display bring-up test passes at 128x64 (`firmware/bringup/oled_test`).
 - I2C clock: 400 kHz. Faster clocks untested in the final build.
 
 ## To fill in
 
-- Confirm the MPU6050 address: the sketch prints every I2C device at boot (0x68 expected, 0x69 if AD0 is high; change `MPU_I2C_ADDR` in `local_config.h`). Result pending hardware run
 - Whether any analog or digital sensors are fitted (DHT, LDR) and on which pins
 - Power source and battery sensing
