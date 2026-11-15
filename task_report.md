@@ -11,6 +11,7 @@ Entry rules:
 
 | ID | Date | Decision | Why | Alternatives | Cost |
 |----|------|----------|-----|--------------|------|
+| D-012 | 2026-11-15 | Issue #3: `hal/display` is a flat C-style API (`displayInit/Clear/Flush/SetContrast/Dim`) plus `displayGfx()` returning `Adafruit_GFX&`; the SSD1306 object is private to `display.cpp` | Face can use GFX drawing and never sees the SSD1306 type, so a panel swap touches only `hal/` | Expose the `Adafruit_SSD1306` object, own drawing wrappers | `displayGfx()` leaks the GFX type (acceptable, GFX is the drawing standard). Per-pixel `drawPixel` goes through GFX bounds and rotation checks, so it is slower than writing the buffer directly. Face will measure it, see #4 |
 | D-011 | 2026-11-15 | Issue #1 config: `local_config.h` is pulled in by `config.h` with `__has_include`, and every value in `config.h` is `#ifndef`-guarded so a node can override it | One header to include, per-node values stay out of git | Always-required `local_config.h` (breaks fresh clones), `-D` build flags (not possible from Arduino IDE) | Needs a GCC with `__has_include` (ESP8266 core 3.x has it, not checked here). Gesture thresholds (2.0 / 1.8 / 0.3 g) are placeholders, not measured, see Numbers |
 | D-010 | 2026-11-15 | `origin/main` held the 7 pre-rewrite commits with Claude trailers, so main is replaced by the 12-commit bundle history (force push, lease pinned to c58fe76) | Keep D-008 true on GitHub | Merge both histories (keeps trailers public forever) | Rewrites public history. Old commits stay reachable by hash on GitHub for a while. Anyone who cloned before must re-clone |
 | D-009 | 2026-11-15 | v0.1 split into 16 issues, 8 per person, along the device/network line (Ariyan: display, face, MPU6050, gestures. Saad: protocol, ESP-NOW, identity, peers, events, console, integration) | The wire format and module headers are a clean contract, so both sides can work in parallel | Split by module count only, or by strengths | The split is by interface, not by known strengths. Integration risk is concentrated in #16 and in two handshakes (event codes #8/#12, blink hook #11/#16). Issues were created on 2026-11-15 from Claude Code with `gh` (Saad = `saad-mh`, 16 issues, #1 to #16) and the one-shot script was then deleted |
@@ -46,6 +47,7 @@ Entry rules:
 
 ## Open items
 
+- hal/display (#3) not compiled or run yet: pending Ariyan's upload. Expect the `displayFlush` us/frame and free heap lines on Serial.
 - Compile check pending: no Arduino toolchain on the dev PC, so config (#1) has not been compiled. Ariyan to verify in Arduino IDE.
 - Gesture thresholds in `config.h` (shake 2.0 g, tap 1.8 g, freefall 0.3 g) are placeholders: pending measurement.
 - Re-run the speed test at I2C_CLOCK_HZ = 800000UL and 1000000UL (one upload each) and record fps plus whether the screen garbles.
