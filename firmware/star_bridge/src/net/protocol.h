@@ -5,11 +5,10 @@
 #include <stdint.h>
 
 #if __has_include("../config/config.h")
-#include "../config/config.h"
-#endif
-#ifndef PROTO_VERSION
-// shortcut: stub until #1 lands config.h, then this fallback is dead code and can go.
-#define PROTO_VERSION 1
+#include "../config/config.h"  // owns PROTO_VERSION (macro or constexpr)
+#else
+// shortcut: stub until #1 lands config.h, then this branch is dead code and can go.
+constexpr uint8_t PROTO_VERSION = 1;
 #endif
 
 static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, "wire format is little-endian");
@@ -66,7 +65,7 @@ struct __attribute__((packed)) TelemetryPayload {
   int16_t value_x100;  // value scaled by 100
 };
 
-// Variable length: payload_len = 1 + number of argument bytes.
+// Variable length: payload_len = 1 + number of argument bytes. sizeof() is the max, not the wire size.
 struct __attribute__((packed)) CmdPayload {
   uint8_t code;
   uint8_t args[PAYLOAD_MAX - 1];
