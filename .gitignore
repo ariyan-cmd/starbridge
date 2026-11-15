@@ -13,3 +13,6 @@ Thumbs.db
 
 # Local secrets and per-node config
 firmware/star_bridge/src/config/local_config.h
+
+# Git bundles used to move history between machines
+*.bundle
