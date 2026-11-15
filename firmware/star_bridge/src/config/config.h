@@ -32,7 +32,6 @@
 #endif
 
 #define PROTO_VERSION 1  // Wire format version, see docs/protocol.md. Used by net.
-#define FW_VERSION_STR "v0.1.2"  // Version shown on the splash; keep in step with FW_VERSION once peers (#10) adds it. Used by splash.
 #ifndef ESPNOW_CHANNEL
 #define ESPNOW_CHANNEL 1  // Wi-Fi channel all nodes share (1..13). Used by net/transport.
 #endif
@@ -45,6 +44,11 @@
 #ifndef MISSED_BEAT_LIMIT
 #define MISSED_BEAT_LIMIT 3  // Beats missed before a peer is dropped, a guess. Used by peers.
 #endif
+#ifndef PEER_TABLE_LEN
+#define PEER_TABLE_LEN 8  // Peers remembered (32 B each). A new peer is ignored while the table is full. Used by peers.
+#endif
+#define FW_VERSION 1  // Firmware version sent in HELLO. Bump on a release, together with FW_VERSION_STR. Used by the sketch.
+#define FW_VERSION_STR "v0.1.2"  // Version shown on the splash. Used by splash.
 
 // Gesture thresholds in g. PLACEHOLDERS, not measured yet (task_report: pending). Used by gestures.
 #ifndef GESTURE_SHAKE_G
